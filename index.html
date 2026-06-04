@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joshua Lucifer — Soul Pairing</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body {
+            background-color: #050505;
+            color: #ececec;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Gothic background glow */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(139,0,0,0.15) 0%, rgba(0,0,0,0) 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .container {
+            background: #0d0d0d;
+            border: 1px solid #3a0d0d;
+            border-radius: 10px;
+            padding: 40px;
+            width: 90%;
+            max-width: 480px;
+            text-align: center;
+            z-index: 2;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(139, 0, 0, 0.2);
+        }
+
+        /* 👁️ Animated Tracking Eyes 👁️ */
+        .eyes-box {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 25px;
+        }
+
+        .eye {
+            width: 75px;
+            height: 75px;
+            background: #111;
+            border: 2px solid #ff3333;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(255, 51, 51, 0.25);
+        }
+
+        .pupil {
+            width: 25px;
+            height: 25px;
+            background: radial-gradient(circle, #ff0000 0%, #4a0000 100%);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px #ff3333;
+            transition: transform 0.05s ease-out;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: #ff3333;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px rgba(255, 51, 51, 0.3);
+        }
+
+        p.quote {
+            font-style: italic;
+            color: #8c8c8c;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            font-size: 0.8rem;
+            color: #ff3333;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            background: #141414;
+            border: 1px solid #3a0d0d;
+            padding: 14px;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        input:focus {
+            border: 1px solid #ff3333;
+            box-shadow: 0 0 8px rgba(255, 51, 51, 0.2);
+        }
+
+        button {
+            width: 100%;
+            background: #1a0505;
+            border: 1px solid #ff3333;
+            color: #ff3333;
+            padding: 14px;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #ff3333;
+            color: #000;
+            box-shadow: 0 0 15px rgba(255, 51, 51, 0.4);
+        }
+
+        /* 💀 Pairing Code Displays */
+        .code-display {
+            display: none;
+            margin-top: 30px;
+            background: #141414;
+            border: 1px solid #ff3333;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: inset 0 0 10px rgba(255, 51, 51, 0.1);
+        }
+
+        .code-title {
+            color: #ff3333;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .code-value {
+            font-size: 2.2rem;
+            font-weight: bold;
+            letter-spacing: 8px;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .download-btn {
+            display: none;
+            margin-top: 15px;
+            background: #000;
+            border: 1px solid #8c8c8c;
+            color: #8c8c8c;
+        }
+
+        .download-btn:hover {
+            background: #ececec;
+            color: #000;
+            border-color: #ececec;
+            box-shadow: 0 0 15px rgba(236, 236, 236, 0.3);
+        }
+
+        .status {
+            font-size: 0.85rem;
+            color: #8c8c8c;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Animated gothic eye tracking -->
+        <div class="eyes-box">
+            <div class="eye">
+                <div class="pupil"></div>
+            </div>
+            <div class="eye">
+                <div class="pupil"></div>
+            </div>
+        </div>
+
+        <h1>JOSHUA LUCIFER</h1>
+        <p class="quote">"Submit your numeric coordinates to seal our contract."</p>
+
+        <div class="input-group">
+            <label for="phoneNumber">Mortal Phone Number</label>
+            <input type="text" id="phoneNumber" placeholder="e.g. 23480XXXXXXXX" autocomplete="off">
+        </div>
+
+        <button id="submitBtn">Seal Soul Pact</button>
+
+        <div class="status" id="statusMessage">Awaiting human coordinates...</div>
+
+        <!-- Displays Pairing code -->
+        <div class="code-display" id="codeDisplay">
+            <div class="code-title">ENTER THIS CODE IN YOUR WHATSAPP</div>
+            <div class="code-value" id="codeValue">--------</div>
+        </div>
+
+        <!-- Download login file back up -->
+        <button id="downloadBtn" class="download-btn">Download Lucifer File</button>
+    </div>
+
+    <script>
+        // Eye Tracking Logic
+        document.addEventListener('mousemove', (e) => {
+            const eyes = document.querySelectorAll('.eye');
+            eyes.forEach(eye => {
+                const pupil = eye.querySelector('.pupil');
+                const rect = eye.getBoundingClientRect();
+                const eyeX = rect.left + rect.width / 2;
+                const eyeY = rect.top + rect.height / 2;
+
+                const angle = Math.atan2(e.clientY - eyeY, e.clientX - eyeX);
+                const distance = Math.min(rect.width / 4, Math.hypot(e.clientX - eyeX, e.clientY - eyeY) / 10);
+
+                const x = distance * Math.cos(angle);
+                const y = distance * Math.sin(angle);
+
+                pupil.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+            });
+        });
+
+        const submitBtn = document.getElementById('submitBtn');
+        const phoneNumberInput = document.getElementById('phoneNumber');
+        const statusMessage = document.getElementById('statusMessage');
+        const codeDisplay = document.getElementById('codeDisplay');
+        const codeValue = document.getElementById('codeValue');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        submitBtn.addEventListener('click', async () => {
+            const number = phoneNumberInput.value.trim();
+            if (!number) {
+                statusMessage.textContent = "[Joshua Lucifer]: Your input is empty. Are you testing my patience?";
+                statusMessage.style.color = "#ff3333";
+                return;
+            }
+
+            statusMessage.textContent = "Summoning portal... please hold your fleeting breath.";
+            statusMessage.style.color = "#8c8c8c";
+            codeDisplay.style.display = "none";
+            downloadBtn.style.display = "none";
+
+            try {
+                const response = await fetch(`/api/pair?number=${number}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    statusMessage.textContent = `[Joshua Lucifer]: ${data.error}`;
+                    statusMessage.style.color = "#ff3333";
+                } else if (data.code) {
+                    codeValue.textContent = data.code;
+                    codeDisplay.style.display = "block";
+                    downloadBtn.style.display = "block";
+                    statusMessage.textContent = "[Joshua Lucifer]: Code generated. Submit this or fade away.";
+                    statusMessage.style.color = "#44ff44";
+                }
+            } catch (error) {
+                statusMessage.textContent = "[Joshua Lucifer]: The portal broke. Try again.";
+                statusMessage.style.color = "#ff3333";
+            }
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            window.location.href = '/api/download';
+        });
+    </script>
+</body>
+</html>
