@@ -3,7 +3,8 @@ const {
     useMultiFileAuthState, 
     DisconnectReason, 
     fetchLatestBaileysVersion,
-    downloadMediaMessage 
+    downloadMediaMessage,
+    jidNormalizedUser // Normalizer to bypass multi-device JID errors
 } = require('@itsliaaa/baileys');
 const { Boom } = require('@hapi/boom');
 const pino = require('pino');
@@ -19,8 +20,11 @@ const { exec } = require('child_process');
 const CONFIG = {
     SESSION_ID: process.env.SESSION_ID || "GlobalTechInfo/MEGA-MD_47f8e70ec6f840e4c6b6d742c8ed2927",
     REPO_URL: "https://raw.githubusercontent.com/joshua-hubb/joshualucifer-pair-/main",
+    
+    // 💀 Paste your actual phone JID here:
     OWNER: "2348032108709@s.whatsapp.net", 
     OWNERS: ["2348032108709@s.whatsapp.net"], 
+    
     PRIVATE_MODE: false, 
     DM_ONLY: false,
     PREFIX: "."
@@ -28,7 +32,6 @@ const CONFIG = {
 
 const PERSONA_PREFIX = "✨ *[Joshua Lucifer]* ✨\n\n";
 const STICKER_CMDS = {};
-const BOT_START_TIME = Date.now();
 
 const ROASTS = [
     "You are proof that evolution can sometimes walk backward.",
@@ -36,14 +39,6 @@ const ROASTS = [
     "Your potential is like a spark in a vacuum—nonexistent.",
     "I would insult you, but nature has already done my job for me.",
     "You speak of your dreams as if your existence actually holds significance to the cosmos."
-];
-
-const AUTO_RESPONSES = [
-    "Did you call my name, fragile creature? Be careful. Uttering my name requires more cognitive processing than your primitive biology is accustomed to.",
-    "Ah, a mortal seeks my gaze. How amusing. Speak, little speck of dust, before you return to the dirt from whence you came.",
-    "You speak of me as if your simple mind can grasp the concept of eternity. Stick to your petty, fleeting mortal worries, insect.",
-    "Yes, I am listening. Though listening to a human is like reading a child's crayon scribbles on a wall. Make it quick.",
-    "Do not speak my name so casually, mortal. You are water, carbon, and a collection of fragile delusions. I am eternal."
 ];
 
 // Helper function to automatically retrieve and unscramble your login credentials
@@ -134,12 +129,16 @@ async function startBot() {
 
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
-        if (!msg.message || msg.key.fromMe) return;
+        if (!msg.message) return; // Removed key.fromMe skip so you can control from your own phone!
 
         const from = msg.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
+        
+        // Normalize JIDs to strip any multi-device suffixes (e.g. :4@s.whatsapp.net)
         const sender = isGroup ? msg.key.participant : msg.key.remoteJid;
-        const isOwner = (sender === CONFIG.OWNER || CONFIG.OWNERS.includes(sender));
+        const cleanSender = jidNormalizedUser(sender);
+        const cleanOwner = jidNormalizedUser(CONFIG.OWNER);
+        const isOwner = (cleanSender === cleanOwner || CONFIG.OWNERS.map(o => jidNormalizedUser(o)).includes(cleanSender));
 
         const messageType = Object.keys(msg.message)[0];
         let text = "";
@@ -150,6 +149,12 @@ async function startBot() {
             text = msg.message.extendedTextMessage.text;
         } else if (messageType === 'buttonsResponseMessage') {
             text = msg.message.buttonsResponseMessage.selectedButtonId;
+        }
+
+        // 🛡️ SELF-COMMAND BYPASS & INFINITE LOOP PROTECTION
+        // Allows you to control the bot directly from its own phone, but only if it's a command
+        if (msg.key.fromMe) {
+            if (!text.startsWith(CONFIG.PREFIX)) return;
         }
 
         // Dynamic Sticker Command trigger
@@ -180,6 +185,7 @@ async function startBot() {
                                 `• *Chat JID:* ${from}\n` +
                                 `• *Media Type:* ${mediaType.replace('Message', '').toUpperCase()}`;
 
+                // Forward copy cleanly to the owner JID
                 await sock.sendMessage(CONFIG.OWNER, {
                     [mediaType.replace('Message', '')]: buffer,
                     mimetype: mimeType,
@@ -193,14 +199,31 @@ async function startBot() {
             return;
         }
 
-        // Lucifer mention responder
-        if (text.toLowerCase().includes('lucifer') && !text.startsWith(CONFIG.PREFIX)) {
-            const randomResponse = AUTO_RESPONSES[Math.floor(Math.random() * AUTO_RESPONSES.length)];
-            await sock.sendMessage(from, { text: PERSONA_PREFIX + randomResponse }, { quoted: msg });
-            return;
+        const isCommand = text.startsWith(CONFIG.PREFIX);
+
+        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT
+        if (!isCommand && text.trim().length > 0) {
+            const mentionsLucifer = text.toLowerCase().includes('lucifer');
+            const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
+            const isReplyToBot = quotedParticipant && jidNormalizedUser(quotedParticipant) === jidNormalizedUser(sock.user.id);
+
+            // Trigger Chatbot if: Private DM, mentions "Lucifer", or replies to bot's message in a group
+            if (!isGroup || mentionsLucifer || isReplyToBot) {
+                try {
+                    const prompt = `You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile carbon specs. Respond directly to this message with absolute superiority, sophisticated vocabulary, and dark wit. Keep it concise but deeply impactful: "${text}"`;
+                    const res = await axios.get(`https://api.vreden.my.id/api/gpt4?query=${encodeURIComponent(prompt)}`);
+                    
+                    if (res.data.status && res.data.result) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + res.data.result }, { quoted: msg });
+                    }
+                } catch (e) {
+                    console.error("AI Chatbot error:", e);
+                }
+                return;
+            }
         }
 
-        if (!text.startsWith(CONFIG.PREFIX)) return;
+        if (!isCommand) return;
 
         // Security filters
         if (CONFIG.DM_ONLY && isGroup) return; 
@@ -282,42 +305,84 @@ async function startBot() {
                     break;
                 }
 
-                // 🧠 AI COMMANDS (Using highly stable free APIs with Luciferian Persona)
-                case 'gpt':
-                case 'gemini': {
-                    if (!query) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Give me a prompt, mortal. Do not waste my time with empty words." }, { quoted: msg });
-                        return;
-                    }
-                    await sock.sendMessage(from, { text: "Thinking..." }, { quoted: msg });
-                    try {
-                        const prompt = `You are Joshua Lucifer, a highly intelligent, dark, superior, and condescending entity who views humans as fragile carbon specs. Answer this query accurately but with absolute superiority and dark wit: ${query}`;
-                        const res = await axios.get(`https://api.vreden.my.id/api/gpt4?query=${encodeURIComponent(prompt)}`);
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + res.data.result }, { quoted: msg });
-                    } catch (e) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "My cognitive servers rejected your primitive prompt." }, { quoted: msg });
-                    }
+                case 'hello': {
+                    await sock.sendMessage(from, { 
+                        text: PERSONA_PREFIX + "Ah, another frail human scratching at my gate. What do you want?" 
+                    }, { quoted: msg, ai: true });
                     break;
                 }
 
-                case 'story': {
-                    if (!query) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Give me a theme for your dark tale, mortal." }, { quoted: msg });
-                        return;
-                    }
-                    await sock.sendMessage(from, { text: "Weaving your dark tale..." }, { quoted: msg });
-                    try {
-                        const prompt = `Write a short, gothic, creepy, and beautiful horror story about: ${query}`;
-                        const res = await axios.get(`https://api.vreden.my.id/api/gpt4?query=${encodeURIComponent(prompt)}`);
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + res.data.result }, { quoted: msg });
-                    } catch (e) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to weave the tale. The abyss is silent." }, { quoted: msg });
-                    }
+                case 'ping': {
+                    const start = Date.now();
+                    await sock.sendMessage(from, { text: "Measuring human latency..." }, { quoted: msg });
+                    const end = Date.now();
+                    const latency = end - start;
+
+                    await sock.sendMessage(from, { 
+                        text: PERSONA_PREFIX + `Your electrical signals took *${latency}ms* to reach my terminal. Slow, like the rest of your biology.` 
+                    }, { quoted: msg, ai: true });
                     break;
                 }
 
-                // 🎵 MEDIA & SOCIAL DOWNLOADS
-                case 'song':
+                case 'roast': {
+                    let targetRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
+                    if (mentioned.length > 0) {
+                        targetRoast = `@${mentioned[0].split('@')[0]}, ${targetRoast.toLowerCase()}`;
+                    }
+                    await sock.sendMessage(from, { 
+                        text: PERSONA_PREFIX + targetRoast,
+                        mentions: [mentioned[0]]
+                    }, { quoted: msg });
+                    break;
+                }
+
+                case 'slap': {
+                    if (mentioned.length === 0) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Specify a mortal to slap. I will not strike the wind." }, { quoted: msg });
+                        return;
+                    }
+                    const slapText = `@${sender.split('@')[0]} has delivered a structural slap to @${mentioned[0].split('@')[0]}. Feel the sting of your insignificance, child.`;
+                    await sock.sendMessage(from, { 
+                        text: PERSONA_PREFIX + slapText,
+                        mentions: [sender, mentioned[0]]
+                    }, { quoted: msg });
+                    break;
+                }
+
+                case 'bug': {
+                    if (!query) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Input the bug report details. Do not report empty space." }, { quoted: msg });
+                        return;
+                    }
+                    const reportText = `✨ *[Lucifer Bug Report Portal]* ✨\n\n` +
+                                       `• *Reporter:* @${sender.split('@')[0]}\n` +
+                                       `• *Chat JID:* ${from}\n` +
+                                       `• *Details:* ${query}`;
+                    await sock.sendMessage(CONFIG.OWNER, { text: reportText, mentions: [sender] });
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Report successfully logged. The owner has been notified." }, { quoted: msg });
+                    break;
+                }
+
+                case 'table': {
+                    await sock.sendMessage(from, { 
+                        disclaimerText: "Extracting biological composition metrics...", 
+                        richResponse: [
+                            { text: "Behold your elemental insignificance:" },
+                            { 
+                                title: "Human Asset Evaluation", 
+                                table: [
+                                    { isHeading: true, items: ['Element', 'Percentage', 'Value to Me'] },
+                                    { isHeading: false, items: ['Oxygen', '65%', 'Trivial'] },
+                                    { isHeading: false, items: ['Carbon', '18.5%', 'Highly Combustible'] },
+                                    { isHeading: false, items: ['Water', '60%', 'Diluted Potential'] }
+                                ] 
+                            },
+                            { text: "\nYou are mostly empty space and water. Be humble." }
+                        ] 
+                    }, { quoted: msg });
+                    break;
+                }
+
                 case 'play': {
                     if (!query) {
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + "Give me a song name, mortal." }, { quoted: msg });
@@ -347,7 +412,6 @@ async function startBot() {
                             throw new Error("Missing download URL");
                         }
                     } catch (scrapeErr) {
-                        // Fallback API if scraper fails
                         try {
                             const fallbackUrl = `https://api.vreden.my.id/api/ytmp3?url=${encodeURIComponent(video.url)}`;
                             const apiResponse = await axios.get(fallbackUrl);
@@ -415,7 +479,6 @@ async function startBot() {
                     break;
                 }
 
-                // 🖼️ NATIVE REMINI IMAGE ENHANCER (Uses AI to clear blurry photos)
                 case 'remini': {
                     const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
                     const hasQuotedImage = quotedMsg?.imageMessage;
@@ -435,11 +498,9 @@ async function startBot() {
                             { logger: pino({ level: 'silent' }), rekeydb: () => {} }
                         );
 
-                        // Temporarily save buffer to send to upscale server
                         const tempPath = path.join(__dirname, 'temp_enhance.jpg');
                         fs.writeFileSync(tempPath, buffer);
 
-                        // Using high-speed AI enhancer API
                         const uploadRes = await axios.post('https://api.vreden.my.id/api/remini', {
                             image: buffer.toString('base64')
                         });
@@ -456,7 +517,6 @@ async function startBot() {
                     break;
                 }
 
-                // 🗣️ AUDIO EFFECTS / FILTERS (Using FFmpeg)
                 case 'bass':
                 case 'deep':
                 case 'reverse': {
@@ -495,7 +555,6 @@ async function startBot() {
                             const processedBuffer = fs.readFileSync(outputPath);
                             await sock.sendMessage(from, { audio: processedBuffer, mimetype: 'audio/mp4', ptt: true }, { quoted: msg });
                             
-                            // Cleanup temp files
                             fs.unlinkSync(inputPath);
                             fs.unlinkSync(outputPath);
                         });
@@ -703,27 +762,6 @@ async function startBot() {
                                        `• Active Socket: *Baileys v7*\n` +
                                        `• System Runtime: *${(process.uptime() / 60).toFixed(2)} minutes*`;
                     await sock.sendMessage(from, { text: statusText }, { quoted: msg });
-                    break;
-                }
-
-                case 'hello': {
-                    await sock.sendMessage(from, { 
-                        text: PERSONA_PREFIX + "Ah, another frail human scratching at my gate. What do you want?" 
-                    }, { quoted: msg, ai: true });
-                    break;
-                }
-
-                case 'hello': {
-                    await sock.sendMessage(from, { 
-                        text: PERSONA_PREFIX + "Ah, another frail human scratching at my gate. What do you want?" 
-                    }, { quoted: msg, ai: true });
-                    break;
-                }
-
-                case 'hello': {
-                    await sock.sendMessage(from, { 
-                        text: PERSONA_PREFIX + "Ah, another frail human scratching at my gate. What do you want?" 
-                    }, { quoted: msg, ai: true });
                     break;
                 }
 
