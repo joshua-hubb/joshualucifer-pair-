@@ -13,7 +13,6 @@ const path = require('path');
 const axios = require('axios');
 const yts = require('yt-search');
 const googleTTS = require('google-tts-api');
-const yt = require('@vreden/youtube_scraper');
 const { exec } = require('child_process');
 
 // 💀 GLOBAL BOT CONFIGURATION
@@ -21,9 +20,9 @@ const CONFIG = {
     SESSION_ID: process.env.SESSION_ID || "GlobalTechInfo/MEGA-MD_47f8e70ec6f840e4c6b6d742c8ed2927",
     REPO_URL: "https://raw.githubusercontent.com/joshua-hubb/joshualucifer-pair-/main",
     
-    // 💀 Paste your actual phone JID here:
-    OWNER: "2348032108709@s.whatsapp.net", 
-    OWNERS: ["2348032108709@s.whatsapp.net"], 
+    // 💀 Your exact phone JID is pre-filled below:
+    OWNER: "2347075024069@s.whatsapp.net", 
+    OWNERS: ["2347075024069@s.whatsapp.net"], 
     
     PRIVATE_MODE: false, 
     DM_ONLY: false,
@@ -39,6 +38,14 @@ const ROASTS = [
     "Your potential is like a spark in a vacuum—nonexistent.",
     "I would insult you, but nature has already done my job for me.",
     "You speak of your dreams as if your existence actually holds significance to the cosmos."
+];
+
+const AUTO_RESPONSES = [
+    "Did you call my name, fragile creature? Be careful. Uttering my name requires more cognitive processing than your primitive biology is accustomed to.",
+    "Ah, a mortal seeks my gaze. How amusing. Speak, little speck of dust, before you return to the dirt from whence you came.",
+    "You speak of me as if your simple mind can grasp the concept of eternity. Stick to your petty, fleeting mortal worries, insect.",
+    "Yes, I am listening. Though listening to a human is like reading a child's crayon scribbles on a wall. Make it quick.",
+    "Do not speak my name so casually, mortal. You are water, carbon, and a collection of fragile delusions. I am eternal."
 ];
 
 // Helper function to automatically retrieve and unscramble your login credentials
@@ -151,8 +158,7 @@ async function startBot() {
             text = msg.message.buttonsResponseMessage.selectedButtonId;
         }
 
-        // 🛡️ SELF-COMMAND BYPASS & INFINITE LOOP PROTECTION
-        // Allows you to control the bot directly from its own phone, but only if it's a command
+        // SELF-COMMAND BYPASS & INFINITE LOOP PROTECTION
         if (msg.key.fromMe) {
             if (!text.startsWith(CONFIG.PREFIX)) return;
         }
@@ -165,7 +171,7 @@ async function startBot() {
             }
         }
 
-        // 👁️ VIEW-ONCE BYPASS INTERCEPTOR (Forwards private copies directly to Owner JID)
+        // VIEW-ONCE BYPASS INTERCEPTOR (Forwards private copies directly to Owner JID)
         const isViewOnce = (messageType === 'viewOnceMessage' || messageType === 'viewOnceMessageV2' || messageType === 'viewOnceMessageV2Extension');
         if (isViewOnce) {
             try {
@@ -201,7 +207,7 @@ async function startBot() {
 
         const isCommand = text.startsWith(CONFIG.PREFIX);
 
-        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT
+        // INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT
         if (!isCommand && text.trim().length > 0) {
             const mentionsLucifer = text.toLowerCase().includes('lucifer');
             const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
@@ -383,7 +389,9 @@ async function startBot() {
                     break;
                 }
 
-                case 'play': {
+                // 🎵 MUSIC PLAY (Directly calls the high-speed online API - Requires no heavy local scraper packages!)
+                case 'play':
+                case 'song': {
                     if (!query) {
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + "Give me a song name, mortal." }, { quoted: msg });
                         return;
@@ -394,36 +402,25 @@ async function startBot() {
                     const video = searchResult.videos[0];
 
                     if (!video) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That audio does not exist in this realm." }, { quoted: msg });
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That audio does not exist." }, { quoted: msg });
                         return;
                     }
 
                     try {
-                        const download = await yt.ytmp3(video.url, 128);
-                        const directUrl = download.download || download.result?.download || download.link || download.result?.link;
-
-                        if (directUrl) {
+                        const apiResponse = await axios.get(`https://api.vreden.my.id/api/ytmp3?url=${encodeURIComponent(video.url)}`);
+                        const downloadUrl = apiResponse.data.download || apiResponse.data.result?.download || apiResponse.data.link || apiResponse.data.result?.link;
+                        
+                        if (downloadUrl) {
                             await sock.sendMessage(from, { 
-                                audio: { url: directUrl }, 
+                                audio: { url: downloadUrl }, 
                                 mimetype: 'audio/mp4', 
                                 fileName: `${video.title}.mp3` 
                             }, { quoted: msg });
                         } else {
-                            throw new Error("Missing download URL");
+                            throw new Error("Invalid API response structure");
                         }
-                    } catch (scrapeErr) {
-                        try {
-                            const fallbackUrl = `https://api.vreden.my.id/api/ytmp3?url=${encodeURIComponent(video.url)}`;
-                            const apiResponse = await axios.get(fallbackUrl);
-                            const finalUrl = apiResponse.data.download || apiResponse.data.result?.download;
-                            if (finalUrl) {
-                                await sock.sendMessage(from, { audio: { url: finalUrl }, mimetype: 'audio/mp4', fileName: `${video.title}.mp3` }, { quoted: msg });
-                            } else {
-                                throw new Error("Fallback failed");
-                            }
-                        } catch (e) {
-                            await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to retrieve the audio streams." }, { quoted: msg });
-                        }
+                    } catch (e) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "The extraction networks are blocked. I cannot retrieve that audio right now." }, { quoted: msg });
                     }
                     break;
                 }
@@ -590,7 +587,7 @@ async function startBot() {
                 }
 
                 case 'getpp': {
-                    const targetJid = mentioned[0] || sender;
+                    const targetJid = sender; // Set directly to sender to keep it robust
                     const ppUrl = await sock.profilePictureUrl(targetJid, 'image').catch(() => null);
                     
                     if (ppUrl) {
@@ -765,7 +762,6 @@ async function startBot() {
                     break;
                 }
 
-                // 🌐 CELESTIAL REPOSITORY SYNCHRONIZER (Owner Only)
                 case 'update': {
                     if (!isOwner) {
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + "You hold no authority to shift my configurations." }, { quoted: msg });
