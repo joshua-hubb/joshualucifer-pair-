@@ -66,7 +66,7 @@ const AUTO_RESPONSES = [
     "Do not speak my name so casually, mortal. You are water, carbon, and a collection of fragile delusions. I am eternal."
 ];
 
-// Helper to sanitize WhatsApp JIDs across multi-device configurations
+// Helper to sanitize WhatsApp JIDs
 function cleanJid(jid) {
     if (!jid) return '';
     const cleanUser = jid.split(':')[0].split('@')[0].trim().toLowerCase();
@@ -235,7 +235,7 @@ async function startBot() {
 
         // 🛡️ SELF-RESPONSE/FROM-ME LOOP SAFETY GUARD
         if (msg.key.fromMe) {
-            if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏheader')) return;
+            if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏꜱʜᴜᴀ')) return;
         }
 
         // 👁️ DYNAMIC AFK CONTROLLER
@@ -329,8 +329,6 @@ async function startBot() {
         const args = text.slice(CONFIG.PREFIX.length).trim().split(/ +/);
         const command = args.shift().toLowerCase();
         const query = args.join(' ');
-        
-        const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
         try {
             switch (command) {
@@ -813,59 +811,80 @@ async function startBot() {
                     break;
                 }
 
-                case 'setstickercmd': {
-                    if (!isOwner) return;
-                    const targetCmd = args[0];
+                // 🎨 IMAGE TO URL UPLOADER (Uses Node's native FormData and Blob class)
+                case 'url': {
                     const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-                    const stickerSha = quotedMsg?.stickerMessage?.fileSha256?.toString('base64');
+                    const hasQuotedImage = quotedMsg?.imageMessage;
 
-                    if (!stickerSha || !targetCmd) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "You must reply to a sticker with `.setstickercmd [command]`" }, { quoted: msg });
+                    if (messageType !== 'imageMessage' && !hasQuotedImage) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Reply to an image with `.url` to upload it as a link." }, { quoted: msg });
                         return;
                     }
 
-                    STICKER_CMDS[stickerSha] = targetCmd;
-                    await sock.sendMessage(from, { text: PERSONA_PREFIX + `Successfully bound this sticker to command: *${targetCmd}*` }, { quoted: msg });
-                    break;
-                }
+                    await sock.sendMessage(from, { text: "Uploading and generating public image URL..." }, { quoted: msg });
 
-                case 'mode': {
-                    if (!isOwner) return;
-                    const targetMode = args[0]?.toLowerCase();
-                    if (targetMode === 'private') {
-                        CONFIG.PRIVATE_MODE = true;
-                        CONFIG.DM_ONLY = false;
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Private Mode *activated*. I shall now ignore everyone except you." }, { quoted: msg });
-                    } else if (targetMode === 'public') {
-                        CONFIG.PRIVATE_MODE = false;
-                        CONFIG.DM_ONLY = false;
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Public Mode *activated*. All mortals may now submit queries." }, { quoted: msg });
-                    } else if (targetMode === 'dm') {
-                        CONFIG.DM_ONLY = true;
-                        CONFIG.PRIVATE_MODE = false;
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Direct Message mode *activated*. I shall now ignore all group chats entirely." }, { quoted: msg });
-                    } else {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Invalid mode. Use `.mode private`, `.mode public`, or `.mode dm`." }, { quoted: msg });
+                    try {
+                        const buffer = await downloadMediaMessage(
+                            msg,
+                            'buffer',
+                            {},
+                            { logger: pino({ level: 'silent' }), rekeydb: () => {} }
+                        );
+
+                        // Utilizing Node v20's native FormData and Blob classes (No extra packages needed!)
+                        const form = new globalThis.FormData();
+                        const blob = new Blob([buffer], { type: 'image/jpeg' });
+                        form.append('file', blob, 'image.jpg');
+
+                        const uploadRes = await fetch('https://tmpfiles.org/api/v1/upload', {
+                            method: 'POST',
+                            body: form
+                        });
+                        const resJson = await uploadRes.json();
+
+                        const directUrl = resJson.data.url.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
+                        await sock.sendMessage(from, { text: `${PERSONA_PREFIX}*IMAGE PUBLIC URL:*\n\n${directUrl}` }, { quoted: msg });
+                    } catch (e) {
+                        console.error("Upload error:", e);
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to upload image. Server rejected the bytes." }, { quoted: msg });
                     }
                     break;
                 }
 
-                case 'addsudo': {
-                    if (!isOwner) return;
-                    const targetJid = mentioned[0] || (args[0] ? `${args[0].replace(/[^0-9]/g, '')}@s.whatsapp.net` : null);
-                    if (!targetJid) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Tag or enter the phone number of the thrall to delegate authority to." }, { quoted: msg });
+                case 's':
+                case 'stickerms': {
+                    const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+                    const hasQuotedImage = quotedMsg?.imageMessage;
+
+                    if (messageType !== 'imageMessage' && !hasQuotedImage) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Reply to an image with `.s` to convert it to a sticker." }, { quoted: msg });
                         return;
                     }
-                    if (CONFIG.OWNERS.includes(targetJid)) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity already holds delegated authority." }, { quoted: msg });
-                    } else {
-                        CONFIG.OWNERS.push(targetJid);
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `Successfully elevated @${targetJid.split('@')[0]} into the Sudo/Owner list.`, mentions: [targetJid] }, { quoted: msg });
+
+                    try {
+                        const buffer = await downloadMediaMessage(
+                            msg,
+                            'buffer',
+                            {},
+                            { logger: pino({ level: 'silent' }), rekeydb: () => {} }
+                        );
+
+                        const uploadRes = await axios.post('https://api.vreden.my.id/api/sticker', {
+                            image: buffer.toString('base64')
+                        });
+
+                        if (uploadRes.data.result) {
+                            await sock.sendMessage(from, { sticker: { url: uploadRes.data.result } }, { quoted: msg });
+                        } else {
+                            throw new Error("Sticker API failed");
+                        }
+                    } catch (e) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to render sticker." }, { quoted: msg });
                     }
                     break;
                 }
 
+                // 🛡️ GROUP CONTROLS (Admin Only)
                 case 'groupinfo': {
                     if (!isGroup) return;
                     const metadata = await sock.groupMetadata(from);
