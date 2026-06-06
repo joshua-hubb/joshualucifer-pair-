@@ -66,7 +66,7 @@ const AUTO_RESPONSES = [
     "Do not speak my name so casually, mortal. You are water, carbon, and a collection of fragile delusions. I am eternal."
 ];
 
-// Helper to sanitize WhatsApp JIDs
+// Helper to sanitize WhatsApp JIDs across multi-device configurations
 function cleanJid(jid) {
     if (!jid) return '';
     const cleanUser = jid.split(':')[0].split('@')[0].trim().toLowerCase();
@@ -92,7 +92,7 @@ function getMessageText(message) {
 async function getLuciferAIResponse(userText) {
     const systemPrompt = "You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile, short-lived carbon specks who are amusingly simple. Respond with absolute superiority, sophisticated vocabulary, and dark wit. Keep it relatively concise but deeply impactful.";
     
-    // Path 1: David Cyril's DeepSeek-V3 (GET Request)
+    // Path 1: David Cyril's DeepSeek-V3 (GET Request - Ultra Stable)
     try {
         const url = `https://apis.davidcyril.name.ng/ai/deepseek-v3?text=${encodeURIComponent(userText)}&systemPrompt=${encodeURIComponent(systemPrompt)}`;
         const res = await axios.get(url);
@@ -235,7 +235,7 @@ async function startBot() {
 
         // 🛡️ SELF-RESPONSE/FROM-ME LOOP SAFETY GUARD
         if (msg.key.fromMe) {
-            if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏꜱʜᴜᴀ')) return;
+            if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏheader')) return;
         }
 
         // 👁️ DYNAMIC AFK CONTROLLER
@@ -300,7 +300,7 @@ async function startBot() {
 
         const isCommand = text.startsWith(CONFIG.PREFIX);
 
-        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT (Runs if NOT a command)
+        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT (Using David Cyril's DeepSeek-V3 GET structure)
         if (!isCommand && text.trim().length > 0) {
             const mentionsLucifer = text.toLowerCase().includes('lucifer');
             const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
@@ -344,64 +344,60 @@ async function startBot() {
                     const progressBar = '█'.repeat(filledLength) + '░'.repeat(emptyLength);
                     const speed = ((Date.now() - startTime) / 1000).toFixed(4);
 
-                    let menuText = `✨ ┌ ◊ *ᴊᴏꜱʜᴜᴀ ʟᴜᴄɪꜰᴇʀ* ◊
-✨ │ *OWNER* : Joshua
-✨ │ *PREFIX* : [ ${CONFIG.PREFIX} ]
-✨ │ *HOST* : Panel
-✨ │ *MODE* : ${CONFIG.PRIVATE_MODE ? 'Private' : 'Public'}
-✨ │ *SPEED* : ${speed} ms
-✨ │ *RAM* : [${progressBar}] ${ramPercentage}%
-✨ └
-
-┌──◊ 🧠 *ABYSS & DEMONIC ARTS* ◊
-│ ➣ .lucifer [text] — Converse with the supreme ruler
-│ ➣ .demonarts — View forbidden arts
-│ ➣ .summon — View current weapons of the abyss
-│ ➣ .curse — Draw a legendary tool of torture
-│ ➣ .abyssexpansion — Nullify boundaries
-│ ➣ .bounty @user — Price on target's head
-│ ➣ .soulhijack @user — Infiltrate target's system
-│ ➣ .condemn @user — Unleash top-tier damnation
-│ ➣ .afk [reason] — Go Away From Keyboard
-│ ➣ .quote — Get an ancient cold quote
-└──◊
-
-┌──◊ 🎵 *UTILITY & SYSTEM* ◊
-│ ➣ .ping
-│ ➣ .uptime
-│ ➣ .repo
-│ ➣ .owner (Sends Owner Contact)
-│ ➣ .play [song name]
-│ ➣ .tts [text]
-│ ➣ .getpp @user
-│ ➣ .getgpp
-│ ➣ .url (Reply image to upload as link)
-│ ➣ .s / .stickerms (Reply image to make sticker)
-└──◊
-
-┌──◊ 🛡️ *GROUP CONTROLS (Admin Only)* ◊
-│ ➣ .groupinfo
-│ ➣ .kick @user
-│ ➣ .promote @user
-│ ➣ .demote @user
-│ ➣ .tagall <msg>
-│ ➣ .hidetag <msg>
-│ ➣ .listadmins
-│ ➣ .kill @user (Banish/Kick)
-│ ➣ .togcstatus [desc]
-│ ➣ .group [open/close]
-└──◊
-
-┌──◊ ⚙️ *CONFIG (Owner Only)* ◊
-│ ➣ .setprefix [symbol]
-│ ➣ .mute @user | .unmute @user
-│ ➣ .sudo @user | .unsudo @user
-│ ➣ .setowner @user
-│ ➣ .setstickercmd [cmd]
-│ ➣ .runtime
-│ ➣ .botstatus
-│ ➣ .update
-└──◊`;
+                    let menuText = `✨ ┌ ◊ *ᴊᴏꜱʜᴜᴀ ʟᴜᴄɪꜰᴇʀ* ◊\n` +
+                                   `✨ │ *OWNER* : Joshua\n` +
+                                   `✨ │ *PREFIX* : [ ${CONFIG.PREFIX} ]\n` +
+                                   `✨ │ *HOST* : Panel\n` +
+                                   `✨ │ *MODE* : ${CONFIG.PRIVATE_MODE ? 'Private' : 'Public'}\n` +
+                                   `✨ │ *SPEED* : ${speed} ms\n` +
+                                   `✨ │ *RAM* : [${progressBar}] ${ramPercentage}%\n` +
+                                   `✨ └\n\n` +
+                                   `┌──◊ 🧠 *ABYSS & DEMONIC ARTS* ◊\n` +
+                                   `│ ➣ \`.lucifer [text]\` — Converse with the supreme ruler\n` +
+                                   `│ ➣ \`.demonarts\` — View forbidden arts\n` +
+                                   `│ ➣ \`.summon\` — View current weapons of the abyss\n` +
+                                   `│ ➣ \`.curse\` — Draw a legendary tool of torture\n` +
+                                   `│ ➣ \`.abyssexpansion\` — Nullify boundaries\n` +
+                                   `│ ➣ \`.bounty @user\` — Price on target's head\n` +
+                                   `│ ➣ \`.soulhijack @user\` — Infiltrate target's system\n` +
+                                   `│ ➣ \`.condemn @user\` — Unleash top-tier damnation\n` +
+                                   `│ ➣ \`.afk [reason]\` — Go Away From Keyboard\n` +
+                                   `│ ➣ \`.quote\` — Get an ancient cold quote\n` +
+                                   `└──◊\n\n` +
+                                   `┌──◊ 🎵 *UTILITY & SYSTEM* ◊\n` +
+                                   `│ ➣ \`.ping\`\n` +
+                                   `│ ➣ \`.uptime\`\n` +
+                                   `│ ➣ \`.repo\`\n` +
+                                   `│ ➣ \`.owner\` (Sends Owner Contact)\n` +
+                                   `│ ➣ \`.play [song name]\`\n` +
+                                   `│ ➣ \`.tts [text]\`\n` +
+                                   `│ ➣ \`.getpfp @user\`\n` +
+                                   `│ ➣ \`.getgpp\`\n` +
+                                   `│ ➣ \`.url\` (Reply image to upload as link)\n` +
+                                   `│ ➣ \`.s\` / \`.stickerms\` (Reply image to make sticker)\n` +
+                                   `└──◊\n\n` +
+                                   `┌──◊ 🛡️ *GROUP CONTROLS (Admin Only)* ◊\n` +
+                                   `│ ➣ \`.groupinfo\`\n` +
+                                   `│ ➣ \`.kick @user\`\n` +
+                                   `│ ➣ \`.promote @user\`\n` +
+                                   `│ ➣ \`.demote @user\`\n` +
+                                   `│ ➣ \`.tagall <msg>\`\n` +
+                                   `│ ➣ \`.hidetag <msg>\`\n` +
+                                   `│ ➣ \`.listadmins\`\n` +
+                                   `│ ➣ \`.kill @user\` (Banish/Kick)\n` +
+                                   `│ ➣ \`.togcstatus [desc]\`\n` +
+                                   `│ ➣ \`.group [open/close]\`\n` +
+                                   `└──◊\n\n` +
+                                   `┌──◊ ⚙️ *CONFIG (Owner Only)* ◊\n` +
+                                   `│ ➣ \`.setprefix [symbol]\`\n` +
+                                   `│ ➣ \`.mute @user\` | \`.unmute @user\`\n` +
+                                   `│ ➣ \`.sudo @user\` | \`.unsudo @user\`\n` +
+                                   `│ ➣ \`.setowner @user\`\n` +
+                                   `│ ➣ \`.setstickercmd [cmd]\`\n` +
+                                   `│ ➣ \`.runtime\`\n` +
+                                   `│ ➣ \`.botstatus\`\n` +
+                                   `│ ➣ \`.update\`\n` +
+                                   `└──◊`;
                     
                     await sock.sendMessage(from, { text: menuText }, { quoted: msg });
                     break;
@@ -424,7 +420,7 @@ async function startBot() {
                     break;
                 }
 
-                // 🧠 DEDICATED LUCIFER AI COMMAND (Triple-Fallback Engine)
+                // 🧠 DEDICATED LUCIFER AI COMMAND (Triple-Fallback Engine with GET request bypass)
                 case 'lucifer': {
                     const queryText = query || "Evaluate my mortal presence.";
                     await sock.sendMessage(from, { text: "Listening to your request..." }, { quoted: msg });
@@ -577,7 +573,7 @@ async function startBot() {
                     break;
                 }
 
-                // 🎵 MUSIC PLAY (Directly calls David Cyril's High-Speed API)
+                // 🎵 MUSIC PLAY (Using the new high-speed David Cyril API with fallback)
                 case 'play':
                 case 'song': {
                     if (!query) {
@@ -720,7 +716,7 @@ async function startBot() {
                     const hasQuotedAudio = quotedMsg?.audioMessage;
 
                     if (messageType !== 'audioMessage' && !hasQuotedAudio) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `Reply to an audio file with \`.${command}\` to apply filter.` }, { quoted: msg });
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `Reply to an audio file with \text.${command}\` to apply filter.` }, { quoted: msg });
                         return;
                     }
 
