@@ -21,6 +21,9 @@ const CONFIG = {
     SESSION_ID: process.env.SESSION_ID || "GlobalTechInfo/MEGA-MD_47f8e70ec6f840e4c6b6d742c8ed2927",
     REPO_URL: "https://raw.githubusercontent.com/joshua-hubb/joshualucifer-pair-/main",
     
+    // 💀 Dedicated Groq API Key
+    GROQ_API_KEY: process.env.GROQ_API_KEY || "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",
+
     // 💀 Your exact phone JID is permanently pre-filled below:
     OWNER: "2348032108709@s.whatsapp.net", 
     OWNERS: ["2348032108709@s.whatsapp.net"], 
@@ -58,15 +61,7 @@ const ROASTS = [
     "You speak of your dreams as if your existence actually holds significance to the cosmos."
 ];
 
-const AUTO_RESPONSES = [
-    "Did you call my name, fragile creature? Be careful. Uttering my name requires more cognitive processing than your primitive biology is accustomed to.",
-    "Ah, a mortal seeks my gaze. How amusing. Speak, little speck of dust, before you return to the dirt from whence you came.",
-    "You speak of me as if your simple mind can grasp the concept of eternity. Stick to your petty, fleeting mortal worries, insect.",
-    "Yes, I am listening. Though listening to a human is like reading a child's crayon scribbles on a wall. Make it quick.",
-    "Do not speak my name so casually, mortal. You are water, carbon, and a collection of fragile delusions. I am eternal."
-];
-
-// Helper to sanitize WhatsApp JIDs
+// Helper to sanitize WhatsApp JIDs across multi-device configurations
 function cleanJid(jid) {
     if (!jid) return '';
     const cleanUser = jid.split(':')[0].split('@')[0].trim().toLowerCase();
@@ -88,44 +83,39 @@ function getMessageText(message) {
     return "";
 }
 
-// 🧠 TRIPLE-FALLBACK AI SYSTEM (Extremely resilient; automatically switches if an API goes offline)
+// 🧠 HIGH-PERFORMANCE DEDICATED GROQ AI CHATBOT (Using Llama-3.3-70b-versatile)
 async function getLuciferAIResponse(userText) {
-    const systemPrompt = "You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile, short-lived carbon specks who are amusingly simple. Respond with absolute superiority, sophisticated vocabulary, and dark wit. Keep it relatively concise but deeply impactful.";
-    
-    // Path 1: David Cyril's DeepSeek-V3 (GET Request)
+    const systemPrompt = "You are Joshua Lucifer, the ancient, supreme, and highly intelligent ruler of the abyss. You look down on humans as fragile, short-lived carbon specks who are amusingly simple. You possess absolute, unbeatable debating skills and you NEVER lose an argument. When challenged or questioned, pick apart the human's logic with ruthless, devastating, sophisticated wit, dark humor, and supreme vocabulary. Speak as an ancient king of darkness. Do not break character.";
+    const apiKey = CONFIG.GROQ_API_KEY;
+
     try {
-        const url = `https://apis.davidcyril.name.ng/ai/deepseek-v3?text=${encodeURIComponent(userText)}&systemPrompt=${encodeURIComponent(systemPrompt)}`;
-        const res = await axios.get(url);
-        if (res.data.success && res.data.result) {
-            return res.data.result;
+        const response = await axios.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            {
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userText }
+                ],
+                temperature: 0.7
+            },
+            {
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        if (response.data.choices && response.data.choices[0].message.content) {
+            return response.data.choices[0].message.content.trim();
+        } else {
+            throw new Error("Invalid response format from Groq API");
         }
     } catch (e) {
-        console.error("Primary AI path failed, trying Fallback 1:", e.message);
+        console.error("Groq AI Error:", e.response?.data || e.message);
+        return "My ancient intellect is momentarily occupied with the affairs of the abyss. Speak to me later, fragile speck.";
     }
-
-    // Path 2: Vreden's GPT-4 Fallback
-    try {
-        const prompt = `${systemPrompt}\n\nUser: ${userText}`;
-        const res = await axios.get(`https://api.vreden.my.id/api/gpt4?query=${encodeURIComponent(prompt)}`);
-        if (res.data.status && res.data.result) {
-            return res.data.result;
-        }
-    } catch (e) {
-        console.error("Fallback 1 failed, trying Fallback 2:", e.message);
-    }
-
-    // Path 3: Vreden's Gemini Fallback
-    try {
-        const prompt = `${systemPrompt}\n\nUser: ${userText}`;
-        const res = await axios.get(`https://api.vreden.my.id/api/gemini?query=${encodeURIComponent(prompt)}`);
-        if (res.data.status && res.data.result) {
-            return res.data.result;
-        }
-    } catch (e) {
-        console.error("Fallback 2 failed:", e.message);
-    }
-
-    throw new Error("All AI servers are currently unresponsive.");
 }
 
 // Helper function to automatically retrieve and unscramble your login credentials
@@ -228,7 +218,7 @@ async function startBot() {
         const isOwner = (cleanSender === cleanOwner || CONFIG.OWNERS.map(o => cleanJid(o)).includes(cleanSender));
 
         const messageType = Object.keys(msg.message)[0];
-        const text = getMessageText(msg.message);
+        let text = getMessageText(msg.message);
 
         // 🛡️ MUTED USERS CHECK
         if (MUTED_USERS.includes(cleanSender) && !isOwner) return;
@@ -300,7 +290,7 @@ async function startBot() {
 
         const isCommand = text.startsWith(CONFIG.PREFIX);
 
-        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT (Using David Cyril's DeepSeek-V3 GET structure)
+        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT (Using Groq Llama-3.3-70B)
         if (!isCommand && text.trim().length > 0) {
             const mentionsLucifer = text.toLowerCase().includes('lucifer');
             const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
@@ -420,7 +410,7 @@ async function startBot() {
                     break;
                 }
 
-                // 🧠 DEDICATED LUCIFER AI COMMAND (Triple-Fallback Engine with GET request bypass)
+                // 🧠 DEDICATED LUCIFER AI COMMAND (Groq Llama-3.3-70B Engine)
                 case 'lucifer': {
                     const queryText = query || "Evaluate my mortal presence.";
                     await sock.sendMessage(from, { text: "Listening to your request..." }, { quoted: msg });
