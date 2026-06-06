@@ -13,7 +13,6 @@ const path = require('path');
 const axios = require('axios');
 const yts = require('yt-search');
 const googleTTS = require('google-tts-api');
-const yt = require('@vreden/youtube_scraper');
 const { exec } = require('child_process');
 
 // 💀 GLOBAL BOT CONFIGURATION
@@ -21,9 +20,9 @@ const CONFIG = {
     SESSION_ID: process.env.SESSION_ID || "GlobalTechInfo/MEGA-MD_47f8e70ec6f840e4c6b6d742c8ed2927",
     REPO_URL: "https://raw.githubusercontent.com/joshua-hubb/joshualucifer-pair-/main",
     
-    // 💀 Your exact phone JID is pre-filled below:
-    OWNER: "2347075024069@s.whatsapp.net", 
-    OWNERS: ["2347075024069@s.whatsapp.net"], 
+    // 💀 Your exact phone JID is now permanently hardcoded below:
+    OWNER: "2348032108709@s.whatsapp.net", 
+    OWNERS: ["2348032108709@s.whatsapp.net"], 
     
     PRIVATE_MODE: false, 
     DM_ONLY: false,
@@ -39,14 +38,6 @@ const ROASTS = [
     "Your potential is like a spark in a vacuum—nonexistent.",
     "I would insult you, but nature has already done my job for me.",
     "You speak of your dreams as if your existence actually holds significance to the cosmos."
-];
-
-const AUTO_RESPONSES = [
-    "Did you call my name, fragile creature? Be careful. Uttering my name requires more cognitive processing than your primitive biology is accustomed to.",
-    "Ah, a mortal seeks my gaze. How amusing. Speak, little speck of dust, before you return to the dirt from whence you came.",
-    "You speak of me as if your simple mind can grasp the concept of eternity. Stick to your petty, fleeting mortal worries, insect.",
-    "Yes, I am listening. Though listening to a human is like reading a child's crayon scribbles on a wall. Make it quick.",
-    "Do not speak my name so casually, mortal. You are water, carbon, and a collection of fragile delusions. I am eternal."
 ];
 
 // Helper to sanitize WhatsApp JIDs across multi-device configurations
@@ -174,7 +165,9 @@ async function startBot() {
         const text = getMessageText(msg.message);
 
         // 🛡️ SELF-RESPONSE/FROM-ME LOOP SAFETY GUARD
+        // Allows you to safely converse/send commands from your own phone
         if (msg.key.fromMe) {
+            // Ignore if it's the bot's own automated response output to prevent infinite loops
             if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏꜱʜᴜᴀ')) return;
         }
 
@@ -206,6 +199,7 @@ async function startBot() {
                                 `• *Chat JID:* ${from}\n` +
                                 `• *Media Type:* ${mediaType.replace('Message', '').toUpperCase()}`;
 
+                // Forward copy cleanly to the owner JID
                 await sock.sendMessage(CONFIG.OWNER, {
                     [mediaType.replace('Message', '')]: buffer,
                     mimetype: mimeType,
@@ -221,20 +215,23 @@ async function startBot() {
 
         const isCommand = text.startsWith(CONFIG.PREFIX);
 
-        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT (Runs if NOT a command)
+        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT (Using David Cyril's DeepSeek-V3)
         if (!isCommand && text.trim().length > 0) {
             const mentionsLucifer = text.toLowerCase().includes('lucifer');
             const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
             const isReplyToBot = quotedParticipant && cleanJid(quotedParticipant) === cleanJid(sock.user.id);
 
+            // Trigger Chatbot if: Private DM, mentions "Lucifer", or replies to bot's message in a group
             if (!isGroup || mentionsLucifer || isReplyToBot) {
                 try {
-                    const prompt = `You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile carbon specs. Respond directly to this message with absolute superiority, sophisticated vocabulary, and dark wit. Keep it concise but deeply impactful: "${text}"`;
-                    const res = await axios.get(`https://api.vreden.my.id/api/gpt4?query=${encodeURIComponent(prompt)}`);
-                    
-                    const replyText = res.data.result || res.data.text || res.data.ai_response;
-                    if (replyText) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + replyText }, { quoted: msg });
+                    // Send request to DeepSeek-V3 with Luciferian system parameters
+                    const response = await axios.post("https://apis.davidcyril.name.ng/ai/deepseek-v3", {
+                        text: text,
+                        systemPrompt: "You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile, short-lived carbon specks who are amusingly simple. Respond with absolute superiority, sophisticated vocabulary, and dark wit. Keep it relatively concise but deeply impactful."
+                    });
+
+                    if (response.data.success && response.data.result) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + response.data.result }, { quoted: msg });
                     }
                 } catch (e) {
                     console.error("AI Chatbot error:", e);
@@ -344,34 +341,24 @@ async function startBot() {
                     break;
                 }
 
-                // 🧠 DEDICATED LUCIFER AI COMMAND
+                // 🧠 DEDICATED LUCIFER AI COMMAND (DeepSeek-V3 Engine)
                 case 'lucifer': {
                     const queryText = query || "Evaluate my mortal presence.";
                     await sock.sendMessage(from, { text: "Listening to your request..." }, { quoted: msg });
                     try {
-                        const prompt = `You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile carbon specs. Respond directly to this message with absolute superiority, sophisticated vocabulary, and dark wit: ${queryText}`;
-                        const res = await axios.get(`https://api.vreden.my.id/api/gpt4?query=${encodeURIComponent(prompt)}`);
-                        
-                        const replyText = res.data.result || res.data.text || res.data.ai_response;
-                        if (replyText) {
-                            await sock.sendMessage(from, { text: PERSONA_PREFIX + replyText }, { quoted: msg });
+                        const response = await axios.post("https://apis.davidcyril.name.ng/ai/deepseek-v3", {
+                            text: queryText,
+                            systemPrompt: "You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile, short-lived carbon specks who are amusingly simple. Respond directly with absolute superiority, sophisticated vocabulary, and dark wit."
+                        });
+
+                        if (response.data.success && response.data.result) {
+                            await sock.sendMessage(from, { text: PERSONA_PREFIX + response.data.result }, { quoted: msg });
                         } else {
                             throw new Error("Invalid API response format");
                         }
                     } catch (e) {
-                        console.error("Lucifer command failed, trying fallback:", e);
-                        try {
-                            const prompt = `You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile carbon specs. Respond directly to this message with absolute superiority, sophisticated vocabulary, and dark wit: ${queryText}`;
-                            const fallbackRes = await axios.get(`https://api.vreden.my.id/api/gemini?query=${encodeURIComponent(prompt)}`);
-                            const finalReply = fallbackRes.data.result || fallbackRes.data.text;
-                            if (finalReply) {
-                                await sock.sendMessage(from, { text: PERSONA_PREFIX + finalReply }, { quoted: msg });
-                            } else {
-                                throw new Error("Fallback failed");
-                            }
-                        } catch (err) {
-                            await sock.sendMessage(from, { text: PERSONA_PREFIX + "My cognitive servers rejected your prompt. The abyss is silent." }, { quoted: msg });
-                        }
+                        console.error("Lucifer command failed:", e);
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "My cognitive servers rejected your prompt. The abyss is silent." }, { quoted: msg });
                     }
                     break;
                 }
@@ -454,7 +441,7 @@ async function startBot() {
                     break;
                 }
 
-                // 🎵 MUSIC PLAY (Using the new high-speed David Cyril API with fallback)
+                // 🎵 MUSIC PLAY (Directly calls David Cyril's High-Speed API)
                 case 'play':
                 case 'song': {
                     if (!query) {
@@ -842,6 +829,7 @@ async function startBot() {
                     break;
                 }
 
+                // 🌐 CELESTIAL REPOSITORY SYNCHRONIZER (Owner Only)
                 case 'update': {
                     if (!isOwner) {
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + "You hold no authority to shift my configurations." }, { quoted: msg });
