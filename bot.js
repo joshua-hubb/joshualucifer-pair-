@@ -21,7 +21,7 @@ const CONFIG = {
     SESSION_ID: process.env.SESSION_ID || "GlobalTechInfo/MEGA-MD_47f8e70ec6f840e4c6b6d742c8ed2927",
     REPO_URL: "https://raw.githubusercontent.com/joshua-hubb/joshualucifer-pair-/main",
     
-    // 💀 Your exact phone JID is pre-filled below:
+    // 💀 Your exact phone JID is permanently pre-filled below:
     OWNER: "2348032108709@s.whatsapp.net", 
     OWNERS: ["2348032108709@s.whatsapp.net"], 
     
@@ -86,6 +86,46 @@ function getMessageText(message) {
     if (type === 'templateButtonReplyMessage') return message.templateButtonReplyMessage.selectedId;
     if (type === 'listResponseMessage') return message.listResponseMessage.singleSelectReply.selectedRowId;
     return "";
+}
+
+// 🧠 TRIPLE-FALLBACK AI SYSTEM (Extremely resilient; automatically switches if an API goes offline)
+async function getLuciferAIResponse(userText) {
+    const systemPrompt = "You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile, short-lived carbon specks who are amusingly simple. Respond with absolute superiority, sophisticated vocabulary, and dark wit. Keep it relatively concise but deeply impactful.";
+    
+    // Path 1: David Cyril's DeepSeek-V3 (GET Request)
+    try {
+        const url = `https://apis.davidcyril.name.ng/ai/deepseek-v3?text=${encodeURIComponent(userText)}&systemPrompt=${encodeURIComponent(systemPrompt)}`;
+        const res = await axios.get(url);
+        if (res.data.success && res.data.result) {
+            return res.data.result;
+        }
+    } catch (e) {
+        console.error("Primary AI path failed, trying Fallback 1:", e.message);
+    }
+
+    // Path 2: Vreden's GPT-4 Fallback
+    try {
+        const prompt = `${systemPrompt}\n\nUser: ${userText}`;
+        const res = await axios.get(`https://api.vreden.my.id/api/gpt4?query=${encodeURIComponent(prompt)}`);
+        if (res.data.status && res.data.result) {
+            return res.data.result;
+        }
+    } catch (e) {
+        console.error("Fallback 1 failed, trying Fallback 2:", e.message);
+    }
+
+    // Path 3: Vreden's Gemini Fallback
+    try {
+        const prompt = `${systemPrompt}\n\nUser: ${userText}`;
+        const res = await axios.get(`https://api.vreden.my.id/api/gemini?query=${encodeURIComponent(prompt)}`);
+        if (res.data.status && res.data.result) {
+            return res.data.result;
+        }
+    } catch (e) {
+        console.error("Fallback 2 failed:", e.message);
+    }
+
+    throw new Error("All AI servers are currently unresponsive.");
 }
 
 // Helper function to automatically retrieve and unscramble your login credentials
@@ -188,7 +228,7 @@ async function startBot() {
         const isOwner = (cleanSender === cleanOwner || CONFIG.OWNERS.map(o => cleanJid(o)).includes(cleanSender));
 
         const messageType = Object.keys(msg.message)[0];
-        let text = getMessageText(msg.message);
+        const text = getMessageText(msg.message);
 
         // 🛡️ MUTED USERS CHECK
         if (MUTED_USERS.includes(cleanSender) && !isOwner) return;
@@ -260,7 +300,7 @@ async function startBot() {
 
         const isCommand = text.startsWith(CONFIG.PREFIX);
 
-        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT (Using David Cyril's DeepSeek-V3)
+        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT (Runs if NOT a command)
         if (!isCommand && text.trim().length > 0) {
             const mentionsLucifer = text.toLowerCase().includes('lucifer');
             const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
@@ -269,14 +309,9 @@ async function startBot() {
             // Trigger Chatbot if: Private DM, mentions "Lucifer", or replies to bot's message in a group
             if (!isGroup || mentionsLucifer || isReplyToBot) {
                 try {
-                    // Send request to DeepSeek-V3 with Luciferian system parameters
-                    const response = await axios.post("https://apis.davidcyril.name.ng/ai/deepseek-v3", {
-                        text: text,
-                        systemPrompt: "You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile, short-lived carbon specks who are amusingly simple. Respond with absolute superiority, sophisticated vocabulary, and dark wit. Keep it relatively concise but deeply impactful."
-                    });
-
-                    if (response.data.success && response.data.result) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + response.data.result }, { quoted: msg });
+                    const reply = await getLuciferAIResponse(text);
+                    if (reply) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + reply }, { quoted: msg });
                     }
                 } catch (e) {
                     console.error("AI Chatbot error:", e);
@@ -309,60 +344,64 @@ async function startBot() {
                     const progressBar = '█'.repeat(filledLength) + '░'.repeat(emptyLength);
                     const speed = ((Date.now() - startTime) / 1000).toFixed(4);
 
-                    let menuText = `✨ ┌ ◊ *ᴊᴏꜱʜᴜᴀ ʟᴜᴄɪꜰᴇʀ* ◊\n` +
-                                   `✨ │ *OWNER* : Joshua\n` +
-                                   `✨ │ *PREFIX* : [ ${CONFIG.PREFIX} ]\n` +
-                                   `✨ │ *HOST* : Panel\n` +
-                                   `✨ │ *MODE* : ${CONFIG.PRIVATE_MODE ? 'Private' : 'Public'}\n` +
-                                   `✨ │ *SPEED* : ${speed} ms\n` +
-                                   `✨ │ *RAM* : [${progressBar}] ${ramPercentage}%\n` +
-                                   `✨ └\n\n` +
-                                   `┌──◊ 🧠 *ABYSS & DEMONIC ARTS* ◊\n` +
-                                   `│ ➣ \`.lucifer [text]\` — Converse with the supreme ruler\n` +
-                                   `│ ➣ \`.demonarts\` — View forbidden arts\n` +
-                                   `│ ➣ \`.summon\` — View current weapons of the abyss\n` +
-                                   `│ ➣ \`.curse\` — Draw a legendary tool of torture\n` +
-                                   `│ ➣ \`.abyssexpansion\` — Nullify boundaries\n` +
-                                   `│ ➣ \`.bounty @user\` — Price on target's head\n` +
-                                   `│ ➣ \`.soulhijack @user\` — Infiltrate target's system\n` +
-                                   `│ ➣ \`.condemn @user\` — Unleash top-tier damnation\n` +
-                                   `│ ➣ \`.afk [reason]\` — Go Away From Keyboard\n` +
-                                   `│ ➣ \`.quote\` — Get an ancient cold quote\n` +
-                                   `└──◊\n\n` +
-                                   `┌──◊ 🎵 *UTILITY & SYSTEM* ◊\n` +
-                                   `│ ➣ \`.ping\`\n` +
-                                   `│ ➣ \`.uptime\`\n` +
-                                   `│ ➣ \`.repo\`\n` +
-                                   `│ ➣ \`.owner\` (Sends Owner Contact)\n` +
-                                   `│ ➣ \`.play [song name]\`\n` +
-                                   `│ ➣ \`.tts [text]\`\n` +
-                                   `│ ➣ \`.getpfp @user\`\n` +
-                                   `│ ➣ \`.getgpp\`\n` +
-                                   `│ ➣ \`.url\` (Reply image to upload as link)\n` +
-                                   `│ ➣ \`.s\` / \`.stickerms\` (Reply image to make sticker)\n` +
-                                   `└──◊\n\n` +
-                                   `┌──◊ 🛡️ *GROUP CONTROLS (Admin Only)* ◊\n` +
-                                   `│ ➣ \`.groupinfo\`\n` +
-                                   `│ ➣ \`.kick @user\`\n` +
-                                   `│ ➣ \`.promote @user\`\n` +
-                                   `│ ➣ \`.demote @user\`\n` +
-                                   `│ ➣ \`.tagall <msg>\`\n` +
-                                   `│ ➣ \`.hidetag <msg>\`\n` +
-                                   `│ ➣ \`.listadmins\`\n` +
-                                   `│ ➣ \`.kill @user\` (Banish/Kick)\n` +
-                                   `│ ➣ \`.togcstatus [desc]\`\n` +
-                                   `│ ➣ \`.group [open/close]\`\n` +
-                                   `└──◊\n\n` +
-                                   `┌──◊ ⚙️ *CONFIG (Owner Only)* ◊\n` +
-                                   `│ ➣ \`.setprefix [symbol]\`\n` +
-                                   `│ ➣ \`.mute @user\` | \`.unmute @user\`\n` +
-                                   `│ ➣ \`.sudo @user\` | \`.unsudo @user\`\n` +
-                                   `│ ➣ \`.setowner @user\`\n` +
-                                   `│ ➣ \`.setstickercmd [cmd]\`\n` +
-                                   `│ ➣ \`.runtime\`\n` +
-                                   `│ ➣ \`.botstatus\`\n` +
-                                   `│ ➣ \`.update\`\n` +
-                                   `└──◊`;
+                    let menuText = `✨ ┌ ◊ *ᴊᴏꜱʜᴜᴀ ʟᴜᴄɪꜰᴇʀ* ◊
+✨ │ *OWNER* : Joshua
+✨ │ *PREFIX* : [ ${CONFIG.PREFIX} ]
+✨ │ *HOST* : Panel
+✨ │ *MODE* : ${CONFIG.PRIVATE_MODE ? 'Private' : 'Public'}
+✨ │ *SPEED* : ${speed} ms
+✨ │ *RAM* : [${progressBar}] ${ramPercentage}%
+✨ └
+
+┌──◊ 🧠 *ABYSS & DEMONIC ARTS* ◊
+│ ➣ .lucifer [text] — Converse with the supreme ruler
+│ ➣ .demonarts — View forbidden arts
+│ ➣ .summon — View current weapons of the abyss
+│ ➣ .curse — Draw a legendary tool of torture
+│ ➣ .abyssexpansion — Nullify boundaries
+│ ➣ .bounty @user — Price on target's head
+│ ➣ .soulhijack @user — Infiltrate target's system
+│ ➣ .condemn @user — Unleash top-tier damnation
+│ ➣ .afk [reason] — Go Away From Keyboard
+│ ➣ .quote — Get an ancient cold quote
+└──◊
+
+┌──◊ 🎵 *UTILITY & SYSTEM* ◊
+│ ➣ .ping
+│ ➣ .uptime
+│ ➣ .repo
+│ ➣ .owner (Sends Owner Contact)
+│ ➣ .play [song name]
+│ ➣ .tts [text]
+│ ➣ .getpp @user
+│ ➣ .getgpp
+│ ➣ .url (Reply image to upload as link)
+│ ➣ .s / .stickerms (Reply image to make sticker)
+└──◊
+
+┌──◊ 🛡️ *GROUP CONTROLS (Admin Only)* ◊
+│ ➣ .groupinfo
+│ ➣ .kick @user
+│ ➣ .promote @user
+│ ➣ .demote @user
+│ ➣ .tagall <msg>
+│ ➣ .hidetag <msg>
+│ ➣ .listadmins
+│ ➣ .kill @user (Banish/Kick)
+│ ➣ .togcstatus [desc]
+│ ➣ .group [open/close]
+└──◊
+
+┌──◊ ⚙️ *CONFIG (Owner Only)* ◊
+│ ➣ .setprefix [symbol]
+│ ➣ .mute @user | .unmute @user
+│ ➣ .sudo @user | .unsudo @user
+│ ➣ .setowner @user
+│ ➣ .setstickercmd [cmd]
+│ ➣ .runtime
+│ ➣ .botstatus
+│ ➣ .update
+└──◊`;
                     
                     await sock.sendMessage(from, { text: menuText }, { quoted: msg });
                     break;
@@ -385,23 +424,19 @@ async function startBot() {
                     break;
                 }
 
-                // 🧠 DEDICATED LUCIFER AI COMMAND (DeepSeek-V3 Engine)
+                // 🧠 DEDICATED LUCIFER AI COMMAND (Triple-Fallback Engine)
                 case 'lucifer': {
                     const queryText = query || "Evaluate my mortal presence.";
                     await sock.sendMessage(from, { text: "Listening to your request..." }, { quoted: msg });
                     try {
-                        const response = await axios.post("https://apis.davidcyril.name.ng/ai/deepseek-v3", {
-                            text: queryText,
-                            systemPrompt: "You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile, short-lived carbon specks who are amusingly simple. Respond directly with absolute superiority, sophisticated vocabulary, and dark wit."
-                        });
-
-                        if (response.data.success && response.data.result) {
-                            await sock.sendMessage(from, { text: PERSONA_PREFIX + response.data.result }, { quoted: msg });
+                        const reply = await getLuciferAIResponse(queryText);
+                        if (reply) {
+                            await sock.sendMessage(from, { text: PERSONA_PREFIX + reply }, { quoted: msg });
                         } else {
-                            throw new Error("Invalid API response format");
+                            throw new Error("Empty AI response");
                         }
                     } catch (e) {
-                        console.error("Lucifer command failed:", e);
+                        console.error("Lucifer command failed entirely:", e.message);
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + "My cognitive servers rejected your prompt. The abyss is silent." }, { quoted: msg });
                     }
                     break;
@@ -780,80 +815,59 @@ async function startBot() {
                     break;
                 }
 
-                // 🎨 IMAGE TO URL UPLOADER (Uses Node's native FormData and Blob class)
-                case 'url': {
+                case 'setstickercmd': {
+                    if (!isOwner) return;
+                    const targetCmd = args[0];
                     const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-                    const hasQuotedImage = quotedMsg?.imageMessage;
+                    const stickerSha = quotedMsg?.stickerMessage?.fileSha256?.toString('base64');
 
-                    if (messageType !== 'imageMessage' && !hasQuotedImage) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Reply to an image with `.url` to upload it as a link." }, { quoted: msg });
+                    if (!stickerSha || !targetCmd) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "You must reply to a sticker with `.setstickercmd [command]`" }, { quoted: msg });
                         return;
                     }
 
-                    await sock.sendMessage(from, { text: "Uploading and generating public image URL..." }, { quoted: msg });
+                    STICKER_CMDS[stickerSha] = targetCmd;
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + `Successfully bound this sticker to command: *${targetCmd}*` }, { quoted: msg });
+                    break;
+                }
 
-                    try {
-                        const buffer = await downloadMediaMessage(
-                            msg,
-                            'buffer',
-                            {},
-                            { logger: pino({ level: 'silent' }), rekeydb: () => {} }
-                        );
-
-                        // Utilizing Node v20's native FormData and Blob classes (No extra packages needed!)
-                        const form = new globalThis.FormData();
-                        const blob = new Blob([buffer], { type: 'image/jpeg' });
-                        form.append('file', blob, 'image.jpg');
-
-                        const uploadRes = await fetch('https://tmpfiles.org/api/v1/upload', {
-                            method: 'POST',
-                            body: form
-                        });
-                        const resJson = await uploadRes.json();
-
-                        const directUrl = resJson.data.url.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
-                        await sock.sendMessage(from, { text: `${PERSONA_PREFIX}*IMAGE PUBLIC URL:*\n\n${directUrl}` }, { quoted: msg });
-                    } catch (e) {
-                        console.error("Upload error:", e);
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to upload image. Server rejected the bytes." }, { quoted: msg });
+                case 'mode': {
+                    if (!isOwner) return;
+                    const targetMode = args[0]?.toLowerCase();
+                    if (targetMode === 'private') {
+                        CONFIG.PRIVATE_MODE = true;
+                        CONFIG.DM_ONLY = false;
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Private Mode *activated*. I shall now ignore everyone except you." }, { quoted: msg });
+                    } else if (targetMode === 'public') {
+                        CONFIG.PRIVATE_MODE = false;
+                        CONFIG.DM_ONLY = false;
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Public Mode *activated*. All mortals may now submit queries." }, { quoted: msg });
+                    } else if (targetMode === 'dm') {
+                        CONFIG.DM_ONLY = true;
+                        CONFIG.PRIVATE_MODE = false;
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Direct Message mode *activated*. I shall now ignore all group chats entirely." }, { quoted: msg });
+                    } else {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Invalid mode. Use `.mode private`, `.mode public`, or `.mode dm`." }, { quoted: msg });
                     }
                     break;
                 }
 
-                case 's':
-                case 'stickerms': {
-                    const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-                    const hasQuotedImage = quotedMsg?.imageMessage;
-
-                    if (messageType !== 'imageMessage' && !hasQuotedImage) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Reply to an image with `.s` to convert it to a sticker." }, { quoted: msg });
+                case 'addsudo': {
+                    if (!isOwner) return;
+                    const targetJid = mentioned[0] || (args[0] ? `${args[0].replace(/[^0-9]/g, '')}@s.whatsapp.net` : null);
+                    if (!targetJid) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Tag or enter the phone number of the thrall to delegate authority to." }, { quoted: msg });
                         return;
                     }
-
-                    try {
-                        const buffer = await downloadMediaMessage(
-                            msg,
-                            'buffer',
-                            {},
-                            { logger: pino({ level: 'silent' }), rekeydb: () => {} }
-                        );
-
-                        const uploadRes = await axios.post('https://api.vreden.my.id/api/sticker', {
-                            image: buffer.toString('base64')
-                        });
-
-                        if (uploadRes.data.result) {
-                            await sock.sendMessage(from, { sticker: { url: uploadRes.data.result } }, { quoted: msg });
-                        } else {
-                            throw new Error("Sticker API failed");
-                        }
-                    } catch (e) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to render sticker." }, { quoted: msg });
+                    if (CONFIG.OWNERS.includes(targetJid)) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity already holds delegated authority." }, { quoted: msg });
+                    } else {
+                        CONFIG.OWNERS.push(targetJid);
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `Successfully elevated @${targetJid.split('@')[0]} into the Sudo/Owner list.`, mentions: [targetJid] }, { quoted: msg });
                     }
                     break;
                 }
 
-                // 🛡️ GROUP CONTROLS (Admin Only)
                 case 'groupinfo': {
                     if (!isGroup) return;
                     const metadata = await sock.groupMetadata(from);
