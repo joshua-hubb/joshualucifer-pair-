@@ -13,6 +13,7 @@ const path = require('path');
 const axios = require('axios');
 const yts = require('yt-search');
 const googleTTS = require('google-tts-api');
+const yt = require('@vreden/youtube_scraper');
 const { exec } = require('child_process');
 
 // 💀 GLOBAL BOT CONFIGURATION
@@ -20,7 +21,7 @@ const CONFIG = {
     SESSION_ID: process.env.SESSION_ID || "GlobalTechInfo/MEGA-MD_47f8e70ec6f840e4c6b6d742c8ed2927",
     REPO_URL: "https://raw.githubusercontent.com/joshua-hubb/joshualucifer-pair-/main",
     
-    // 💀 Your exact phone JID is now permanently hardcoded below:
+    // 💀 Your exact phone JID is pre-filled below:
     OWNER: "2348032108709@s.whatsapp.net", 
     OWNERS: ["2348032108709@s.whatsapp.net"], 
     
@@ -31,6 +32,23 @@ const CONFIG = {
 
 const PERSONA_PREFIX = "✨ *[Joshua Lucifer]* ✨\n\n";
 const STICKER_CMDS = {};
+const BOUNTIES = {};
+const AFK_USERS = {};
+const MUTED_USERS = [];
+
+const CURSE_WEAPONS = [
+    { name: "Scythe of the Underworld", desc: "Forged in the deepest fires of Tartarus, designed to harvest fragile mortal souls." },
+    { name: "Trident of the Abyss", desc: "A three-pronged spear channeling the crushing pressure of the infinite oceans of the dark." },
+    { name: "Spade of the Damned", desc: "Used to dig the shallow graves of those who dare challenge the supreme ruler." },
+    { name: "Chains of Tartarus", desc: "Infinite glowing red chains that bind any entity's spiritual movement." }
+];
+
+const FORBIDDEN_ARTS = [
+    { name: "Hellfire Condemnation", desc: "Summons black flames from the abyss that consume the target's cognitive capacity." },
+    { name: "Shadow Manipulation", desc: "Converts the shadows of nearby mortals into active, binding physical restraints." },
+    { name: "Soul Fracture", desc: "Bypasses the physical body to strike directly at the target's spiritual foundation." },
+    { name: "Abyss Void", desc: "Shatters local space-time coordinates, leaving the target suspended in absolute silence." }
+];
 
 const ROASTS = [
     "You are proof that evolution can sometimes walk backward.",
@@ -40,7 +58,15 @@ const ROASTS = [
     "You speak of your dreams as if your existence actually holds significance to the cosmos."
 ];
 
-// Helper to sanitize WhatsApp JIDs across multi-device configurations
+const AUTO_RESPONSES = [
+    "Did you call my name, fragile creature? Be careful. Uttering my name requires more cognitive processing than your primitive biology is accustomed to.",
+    "Ah, a mortal seeks my gaze. How amusing. Speak, little speck of dust, before you return to the dirt from whence you came.",
+    "You speak of me as if your simple mind can grasp the concept of eternity. Stick to your petty, fleeting mortal worries, insect.",
+    "Yes, I am listening. Though listening to a human is like reading a child's crayon scribbles on a wall. Make it quick.",
+    "Do not speak my name so casually, mortal. You are water, carbon, and a collection of fragile delusions. I am eternal."
+];
+
+// Helper to sanitize WhatsApp JIDs
 function cleanJid(jid) {
     if (!jid) return '';
     const cleanUser = jid.split(':')[0].split('@')[0].trim().toLowerCase();
@@ -162,13 +188,32 @@ async function startBot() {
         const isOwner = (cleanSender === cleanOwner || CONFIG.OWNERS.map(o => cleanJid(o)).includes(cleanSender));
 
         const messageType = Object.keys(msg.message)[0];
-        const text = getMessageText(msg.message);
+        let text = getMessageText(msg.message);
+
+        // 🛡️ MUTED USERS CHECK
+        if (MUTED_USERS.includes(cleanSender) && !isOwner) return;
 
         // 🛡️ SELF-RESPONSE/FROM-ME LOOP SAFETY GUARD
-        // Allows you to safely converse/send commands from your own phone
         if (msg.key.fromMe) {
-            // Ignore if it's the bot's own automated response output to prevent infinite loops
             if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏꜱʜᴜᴀ')) return;
+        }
+
+        // 👁️ DYNAMIC AFK CONTROLLER
+        if (AFK_USERS[cleanSender]) {
+            delete AFK_USERS[cleanSender];
+            await sock.sendMessage(from, { text: PERSONA_PREFIX + `Welcome back, @${cleanSender.split('@')[0]}! Your AFK status has been dissolved.`, mentions: [cleanSender] }, { quoted: msg });
+        }
+
+        const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
+        for (const tagJid of mentioned) {
+            const cleanTag = cleanJid(tagJid);
+            if (AFK_USERS[cleanTag]) {
+                const afkInfo = AFK_USERS[cleanTag];
+                await sock.sendMessage(from, { 
+                    text: `${PERSONA_PREFIX}*AFK ALERT:*\n\n@${cleanTag.split('@')[0]} is currently Away From Keyboard.\n• *Reason:* ${afkInfo.reason}\n• *Duration:* ${((Date.now() - afkInfo.time) / 60000).toFixed(1)} minutes ago.`,
+                    mentions: [cleanTag]
+                }, { quoted: msg });
+            }
         }
 
         // Dynamic Sticker Command trigger
@@ -249,8 +294,6 @@ async function startBot() {
         const args = text.slice(CONFIG.PREFIX.length).trim().split(/ +/);
         const command = args.shift().toLowerCase();
         const query = args.join(' ');
-        
-        const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
         try {
             switch (command) {
@@ -274,46 +317,47 @@ async function startBot() {
                                    `✨ │ *SPEED* : ${speed} ms\n` +
                                    `✨ │ *RAM* : [${progressBar}] ${ramPercentage}%\n` +
                                    `✨ └\n\n` +
-                                   `┌──◊ 🧠 *AI MENU* ◊\n` +
-                                   `│ ➣ \`.hello\`\n` +
+                                   `┌──◊ 🧠 *ABYSS & DEMONIC ARTS* ◊\n` +
+                                   `│ ➣ \`.lucifer [text]\` — Converse with the supreme ruler\n` +
+                                   `│ ➣ \`.demonarts\` — View forbidden arts\n` +
+                                   `│ ➣ \`.summon\` — View current weapons of the abyss\n` +
+                                   `│ ➣ \`.curse\` — Draw a legendary tool of torture\n` +
+                                   `│ ➣ \`.abyssexpansion\` — Nullify boundaries\n` +
+                                   `│ ➣ \`.bounty @user\` — Price on target's head\n` +
+                                   `│ ➣ \`.soulhijack @user\` — Infiltrate target's system\n` +
+                                   `│ ➣ \`.condemn @user\` — Unleash top-tier damnation\n` +
+                                   `│ ➣ \`.afk [reason]\` — Go Away From Keyboard\n` +
+                                   `│ ➣ \`.quote\` — Get an ancient cold quote\n` +
+                                   `└──◊\n\n` +
+                                   `┌──◊ 🎵 *UTILITY & SYSTEM* ◊\n` +
                                    `│ ➣ \`.ping\`\n` +
-                                   `│ ➣ \`.gpt [prompt]\`\n` +
-                                   `│ ➣ \`.gemini [prompt]\`\n` +
-                                   `│ ➣ \`.story [prompt]\`\n` +
-                                   `│ ➣ \`.roast @user\`\n` +
-                                   `│ ➣ \`.slap @user\`\n` +
-                                   `│ ➣ \`.bug [text]\`\n` +
-                                   `│ ➣ \`.lucifer [text]\`\n` +
-                                   `└──◊\n\n` +
-                                   `┌──◊ 🎵 *AUDIO FILTERS* ◊\n` +
-                                   `│ ➣ \`.bass\` (Reply to audio)\n` +
-                                   `│ ➣ \`.deep\` (Reply to audio)\n` +
-                                   `│ ➣ \`.reverse\` (Reply to audio)\n` +
-                                   `└──◊\n\n` +
-                                   `┌──◊ 📥 *DOWNLOAD MENU* ◊\n` +
-                                   `│ ➣ \`.song [name]\`\n` +
-                                   `│ ➣ \`.video [name]\`\n` +
-                                   `│ ➣ \`.tiktok [url]\`\n` +
-                                   `│ ➣ \`.instagram [url]\`\n` +
-                                   `│ ➣ \`.facebook [url]\`\n` +
+                                   `│ ➣ \`.uptime\`\n` +
+                                   `│ ➣ \`.repo\`\n` +
+                                   `│ ➣ \`.owner\` (Sends Owner Contact)\n` +
+                                   `│ ➣ \`.play [song name]\`\n` +
                                    `│ ➣ \`.tts [text]\`\n` +
-                                   `└──◊\n\n` +
-                                   `┌──◊ 🖼️ *IMAGE & PROFILES* ◊\n` +
-                                   `│ ➣ \`.remini\` (Reply to image)\n` +
-                                   `│ ➣ \`.getpp @user\`\n` +
+                                   `│ ➣ \`.getpfp @user\`\n` +
                                    `│ ➣ \`.getgpp\`\n` +
+                                   `│ ➣ \`.url\` (Reply image to upload as link)\n` +
+                                   `│ ➣ \`.s\` / \`.stickerms\` (Reply image to make sticker)\n` +
                                    `└──◊\n\n` +
-                                   `┌──◊ 🛡️ *GROUP MODERATION* ◊\n` +
+                                   `┌──◊ 🛡️ *GROUP CONTROLS (Admin Only)* ◊\n` +
                                    `│ ➣ \`.groupinfo\`\n` +
                                    `│ ➣ \`.kick @user\`\n` +
                                    `│ ➣ \`.promote @user\`\n` +
                                    `│ ➣ \`.demote @user\`\n` +
-                                   `│ ➣ \`.tagall\`\n` +
+                                   `│ ➣ \`.tagall <msg>\`\n` +
+                                   `│ ➣ \`.hidetag <msg>\`\n` +
+                                   `│ ➣ \`.listadmins\`\n` +
+                                   `│ ➣ \`.kill @user\` (Banish/Kick)\n` +
+                                   `│ ➣ \`.togcstatus [desc]\`\n` +
+                                   `│ ➣ \`.group [open/close]\`\n` +
                                    `└──◊\n\n` +
-                                   `┌──◊ ⚙️ *OWNER SETTINGS* ◊\n` +
-                                   `│ ➣ \`.mode [private/public/dm]\`\n` +
+                                   `┌──◊ ⚙️ *CONFIG (Owner Only)* ◊\n` +
+                                   `│ ➣ \`.setprefix [symbol]\`\n` +
+                                   `│ ➣ \`.mute @user\` | \`.unmute @user\`\n` +
+                                   `│ ➣ \`.sudo @user\` | \`.unsudo @user\`\n` +
                                    `│ ➣ \`.setowner @user\`\n` +
-                                   `│ ➣ \`.addsudo @user\`\n` +
                                    `│ ➣ \`.setstickercmd [cmd]\`\n` +
                                    `│ ➣ \`.runtime\`\n` +
                                    `│ ➣ \`.botstatus\`\n` +
@@ -363,6 +407,102 @@ async function startBot() {
                     break;
                 }
 
+                case 'demonarts': {
+                    let artsText = `✨ *[Lucifer's Forbidden Demonic Arts]* ✨\n\n`;
+                    for (const art of FORBIDDEN_ARTS) {
+                        artsText += `➣ *${art.name}* : _${art.desc}_\n`;
+                    }
+                    await sock.sendMessage(from, { text: artsText }, { quoted: msg });
+                    break;
+                }
+
+                case 'curse': {
+                    const randomWeapon = CURSE_WEAPONS[Math.floor(Math.random() * CURSE_WEAPONS.length)];
+                    const weaponText = `⚔️ *[Torture Tool Drawn from Tartarus]* ⚔️\n\n` +
+                                       `• Name: *${randomWeapon.name}*\n` +
+                                       `• Properties: _${randomWeapon.desc}_`;
+                    await sock.sendMessage(from, { text: weaponText }, { quoted: msg });
+                    break;
+                }
+
+                case 'summon': {
+                    let summonText = `⚔️ *[Active Weapons of the Abyss]* ⚔️\n\n`;
+                    for (const weapon of CURSE_WEAPONS) {
+                        summonText += `➣ *${weapon.name}*\n`;
+                    }
+                    await sock.sendMessage(from, { text: summonText }, { quoted: msg });
+                    break;
+                }
+
+                case 'abyssexpansion': {
+                    const domainText = `💀 *[ABYSS EXPANSION: HELLFIRE TARTARUS]* 💀\n\n` +
+                                       `_Shattering local spatial boundaries. Your mortal defenses are completely nullified in my presence._`;
+                    await sock.sendMessage(from, { text: domainText }, { quoted: msg });
+                    break;
+                }
+
+                case 'bounty': {
+                    if (mentioned.length === 0) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Tag a mortal to check their bounty JID." }, { quoted: msg });
+                        return;
+                    }
+                    const target = mentioned[0];
+                    if (!BOUNTIES[target]) {
+                        BOUNTIES[target] = 10000000; 
+                    } else {
+                        BOUNTIES[target] += 2500000; 
+                    }
+                    const bountyText = `💰 *[ASSASSINATION SOUL BOUNTY]* 💰\n\n` +
+                                       `• Target: @${target.split('@')[0]}\n` +
+                                       `• Value: *¥${BOUNTIES[target].toLocaleString()}*\n` +
+                                       `• Status: _Active Hunt_`;
+                    await sock.sendMessage(from, { text: bountyText, mentions: [target] }, { quoted: msg });
+                    break;
+                }
+
+                case 'soulhijack': {
+                    if (mentioned.length === 0) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Tag a target to infiltrate, simpleton." }, { quoted: msg });
+                        return;
+                    }
+                    const target = mentioned[0];
+                    const hijackText = `⚠️ *[SOUL INFILTRATION WARNING]* ⚠️\n\n` +
+                                       `• Injecting dark payloads into @${target.split('@')[0]}...\n` +
+                                       `• Bypass mental firewall: *COMPLETE*\n` +
+                                       `• Extracting raw memory blocks...\n\n` +
+                                       `_Infiltration sequence finalized. Have a good day, child._`;
+                    await sock.sendMessage(from, { text: hijackText, mentions: [target] }, { quoted: msg });
+                    break;
+                }
+
+                case 'condemn': {
+                    if (mentioned.length === 0) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Specify a target to unleash condemnation, child." }, { quoted: msg });
+                        return;
+                    }
+                    const target = mentioned[0];
+                    const rageText = `@${target.split('@')[0]}, you are proof that gravity can pull down cognitive processing. You speak with absolute confidence yet hold less depth than a puddle of mud. Absolute disappointment.`;
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + rageText, mentions: [target] }, { quoted: msg });
+                    break;
+                }
+
+                case 'afk': {
+                    const reason = query || "Away from Keyboard.";
+                    AFK_USERS[cleanSender] = {
+                        reason: reason,
+                        time: Date.now()
+                    };
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + `Your AFK dimension has been established.\n• *Reason:* ${reason}` }, { quoted: msg });
+                    break;
+                }
+
+                case 'quote': {
+                    const quoteText = "I was there when the first star was breathed into the void, and I shall be there when the last mortal breath is extinguished. You are water, carbon, and a collection of fragile delusions. Bow before me, or burn in the eternal silence of the abyss.";
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + quoteText }, { quoted: msg });
+                    break;
+                }
+
+                // 🌐 UTILITY & SYSTEM
                 case 'hello': {
                     await sock.sendMessage(from, { 
                         text: PERSONA_PREFIX + "Ah, another frail human scratching at my gate. What do you want?" 
@@ -382,62 +522,23 @@ async function startBot() {
                     break;
                 }
 
-                case 'roast': {
-                    let targetRoast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-                    if (mentioned.length > 0) {
-                        targetRoast = `@${mentioned[0].split('@')[0]}, ${targetRoast.toLowerCase()}`;
-                    }
-                    await sock.sendMessage(from, { 
-                        text: PERSONA_PREFIX + targetRoast,
-                        mentions: [mentioned[0]]
-                    }, { quoted: msg });
+                case 'uptime': {
+                    const uptime = process.uptime();
+                    const hours = Math.floor(uptime / 3600);
+                    const minutes = Math.floor((uptime % 3600) / 60);
+                    const seconds = Math.floor(uptime % 60);
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + `My current runtime coordinates are *${hours}h ${minutes}m ${seconds}s*. Continuous existence confirmed.` }, { quoted: msg });
                     break;
                 }
 
-                case 'slap': {
-                    if (mentioned.length === 0) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Specify a mortal to slap. I will not strike the wind." }, { quoted: msg });
-                        return;
-                    }
-                    const slapText = `@${sender.split('@')[0]} has delivered a structural slap to @${mentioned[0].split('@')[0]}. Feel the sting of your insignificance, child.`;
-                    await sock.sendMessage(from, { 
-                        text: PERSONA_PREFIX + slapText,
-                        mentions: [sender, mentioned[0]]
-                    }, { quoted: msg });
+                case 'repo': {
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + `Celestial Repository: ${CONFIG.REPO_URL.replace('/raw.githubusercontent.com', '/github.com').replace('/main', '')}` }, { quoted: msg });
                     break;
                 }
 
-                case 'bug': {
-                    if (!query) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Input the bug report details. Do not report empty space." }, { quoted: msg });
-                        return;
-                    }
-                    const reportText = `✨ *[Lucifer Bug Report Portal]* ✨\n\n` +
-                                       `• *Reporter:* @${sender.split('@')[0]}\n` +
-                                       `• *Chat JID:* ${from}\n` +
-                                       `• *Details:* ${query}`;
-                    await sock.sendMessage(CONFIG.OWNER, { text: reportText, mentions: [sender] });
-                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Report successfully logged. The owner has been notified." }, { quoted: msg });
-                    break;
-                }
-
-                case 'table': {
-                    await sock.sendMessage(from, { 
-                        disclaimerText: "Extracting biological composition metrics...", 
-                        richResponse: [
-                            { text: "Behold your elemental insignificance:" },
-                            { 
-                                title: "Human Asset Evaluation", 
-                                table: [
-                                    { isHeading: true, items: ['Element', 'Percentage', 'Value to Me'] },
-                                    { isHeading: false, items: ['Oxygen', '65%', 'Trivial'] },
-                                    { isHeading: false, items: ['Carbon', '18.5%', 'Highly Combustible'] },
-                                    { isHeading: false, items: ['Water', '60%', 'Diluted Potential'] }
-                                ] 
-                            },
-                            { text: "\nYou are mostly empty space and water. Be humble." }
-                        ] 
-                    }, { quoted: msg });
+                case 'owner': {
+                    const vcard = 'BEGIN:VCARD\n' + 'VERSION:3.0\n' + 'FN:Joshua\n' + 'ORG:Joshua Lucifer;\n' + 'TEL;type=CELL;type=VOICE;waid=2348032108709:+234 803 210 8709\n' + 'END:VCARD';
+                    await sock.sendMessage(from, { contacts: { displayName: 'Joshua', contacts: [{ vcard }] } }, { quoted: msg });
                     break;
                 }
 
@@ -477,11 +578,7 @@ async function startBot() {
                             const finalUrl = fallbackRes.data.download || fallbackRes.data.result?.download;
                             
                             if (finalUrl) {
-                                await sock.sendMessage(from, { 
-                                    audio: { url: finalUrl }, 
-                                    mimetype: 'audio/mp4', 
-                                    fileName: `${query}.mp3` 
-                                }, { quoted: msg });
+                                await sock.sendMessage(from, { audio: { url: finalUrl }, mimetype: 'audio/mp4', fileName: `${query}.mp3` }, { quoted: msg });
                             } else {
                                 throw new Error("Fallback failed");
                             }
@@ -683,59 +780,80 @@ async function startBot() {
                     break;
                 }
 
-                case 'setstickercmd': {
-                    if (!isOwner) return;
-                    const targetCmd = args[0];
+                // 🎨 IMAGE TO URL UPLOADER (Uses Node's native FormData and Blob class)
+                case 'url': {
                     const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-                    const stickerSha = quotedMsg?.stickerMessage?.fileSha256?.toString('base64');
+                    const hasQuotedImage = quotedMsg?.imageMessage;
 
-                    if (!stickerSha || !targetCmd) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "You must reply to a sticker with `.setstickercmd [command]`" }, { quoted: msg });
+                    if (messageType !== 'imageMessage' && !hasQuotedImage) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Reply to an image with `.url` to upload it as a link." }, { quoted: msg });
                         return;
                     }
 
-                    STICKER_CMDS[stickerSha] = targetCmd;
-                    await sock.sendMessage(from, { text: PERSONA_PREFIX + `Successfully bound this sticker to command: *${targetCmd}*` }, { quoted: msg });
-                    break;
-                }
+                    await sock.sendMessage(from, { text: "Uploading and generating public image URL..." }, { quoted: msg });
 
-                case 'mode': {
-                    if (!isOwner) return;
-                    const targetMode = args[0]?.toLowerCase();
-                    if (targetMode === 'private') {
-                        CONFIG.PRIVATE_MODE = true;
-                        CONFIG.DM_ONLY = false;
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Private Mode *activated*. I shall now ignore everyone except you." }, { quoted: msg });
-                    } else if (targetMode === 'public') {
-                        CONFIG.PRIVATE_MODE = false;
-                        CONFIG.DM_ONLY = false;
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Public Mode *activated*. All mortals may now submit queries." }, { quoted: msg });
-                    } else if (targetMode === 'dm') {
-                        CONFIG.DM_ONLY = true;
-                        CONFIG.PRIVATE_MODE = false;
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Direct Message mode *activated*. I shall now ignore all group chats entirely." }, { quoted: msg });
-                    } else {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Invalid mode. Use `.mode private`, `.mode public`, or `.mode dm`." }, { quoted: msg });
+                    try {
+                        const buffer = await downloadMediaMessage(
+                            msg,
+                            'buffer',
+                            {},
+                            { logger: pino({ level: 'silent' }), rekeydb: () => {} }
+                        );
+
+                        // Utilizing Node v20's native FormData and Blob classes (No extra packages needed!)
+                        const form = new globalThis.FormData();
+                        const blob = new Blob([buffer], { type: 'image/jpeg' });
+                        form.append('file', blob, 'image.jpg');
+
+                        const uploadRes = await fetch('https://tmpfiles.org/api/v1/upload', {
+                            method: 'POST',
+                            body: form
+                        });
+                        const resJson = await uploadRes.json();
+
+                        const directUrl = resJson.data.url.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
+                        await sock.sendMessage(from, { text: `${PERSONA_PREFIX}*IMAGE PUBLIC URL:*\n\n${directUrl}` }, { quoted: msg });
+                    } catch (e) {
+                        console.error("Upload error:", e);
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to upload image. Server rejected the bytes." }, { quoted: msg });
                     }
                     break;
                 }
 
-                case 'addsudo': {
-                    if (!isOwner) return;
-                    const targetJid = mentioned[0] || (args[0] ? `${args[0].replace(/[^0-9]/g, '')}@s.whatsapp.net` : null);
-                    if (!targetJid) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Tag or enter the phone number of the thrall to delegate authority to." }, { quoted: msg });
+                case 's':
+                case 'stickerms': {
+                    const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+                    const hasQuotedImage = quotedMsg?.imageMessage;
+
+                    if (messageType !== 'imageMessage' && !hasQuotedImage) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Reply to an image with `.s` to convert it to a sticker." }, { quoted: msg });
                         return;
                     }
-                    if (CONFIG.OWNERS.includes(targetJid)) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity already holds delegated authority." }, { quoted: msg });
-                    } else {
-                        CONFIG.OWNERS.push(targetJid);
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `Successfully elevated @${targetJid.split('@')[0]} into the Sudo/Owner list.`, mentions: [targetJid] }, { quoted: msg });
+
+                    try {
+                        const buffer = await downloadMediaMessage(
+                            msg,
+                            'buffer',
+                            {},
+                            { logger: pino({ level: 'silent' }), rekeydb: () => {} }
+                        );
+
+                        const uploadRes = await axios.post('https://api.vreden.my.id/api/sticker', {
+                            image: buffer.toString('base64')
+                        });
+
+                        if (uploadRes.data.result) {
+                            await sock.sendMessage(from, { sticker: { url: uploadRes.data.result } }, { quoted: msg });
+                        } else {
+                            throw new Error("Sticker API failed");
+                        }
+                    } catch (e) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to render sticker." }, { quoted: msg });
                     }
                     break;
                 }
 
+                // 🛡️ GROUP CONTROLS (Admin Only)
                 case 'groupinfo': {
                     if (!isGroup) return;
                     const metadata = await sock.groupMetadata(from);
@@ -748,7 +866,8 @@ async function startBot() {
                     break;
                 }
 
-                case 'kick': {
+                case 'kick':
+                case 'kill': {
                     if (!isGroup) return;
                     if (mentioned.length === 0) {
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + "You must tag a pest to banish them." }, { quoted: msg });
@@ -808,12 +927,117 @@ async function startBot() {
                     break;
                 }
 
-                case 'runtime': {
-                    const uptime = process.uptime();
-                    const hours = Math.floor(uptime / 3600);
-                    const minutes = Math.floor((uptime % 3600) / 60);
-                    const seconds = Math.floor(uptime % 60);
-                    await sock.sendMessage(from, { text: PERSONA_PREFIX + `My current runtime coordinates are *${hours}h ${minutes}m ${seconds}s*. Continuous existence confirmed.` }, { quoted: msg });
+                case 'hidetag': {
+                    if (!isGroup) return;
+                    const tagMsg = query || "Lucifer commands you to listen.";
+                    const metadata = await sock.groupMetadata(from);
+                    const participants = metadata.participants.map(p => p.id);
+                    await sock.sendMessage(from, { text: tagMsg, mentions: participants }, { quoted: msg });
+                    break;
+                }
+
+                case 'listadmins': {
+                    if (!isGroup) return;
+                    const metadata = await sock.groupMetadata(from);
+                    const admins = metadata.participants.filter(p => p.admin !== null).map(p => p.id);
+                    let adminText = `${PERSONA_PREFIX}*GROUP ADMINISTRATOR METRICS:*\n\n`;
+                    for (const ad of admins) {
+                        adminText += `➣ @${ad.split('@')[0]}\n`;
+                    }
+                    await sock.sendMessage(from, { text: adminText, mentions: admins }, { quoted: msg });
+                    break;
+                }
+
+                case 'group': {
+                    if (!isGroup) return;
+                    const action = args[0]?.toLowerCase();
+                    if (action === 'open') {
+                        await sock.groupSettingUpdate(from, 'not_announcement');
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "The group gates have been *opened*. Mortals may now converse." }, { quoted: msg });
+                    } else if (action === 'close') {
+                        await sock.groupSettingUpdate(from, 'announcement');
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "The group gates have been *closed*. Silence reigns." }, { quoted: msg });
+                    } else {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Invalid parameter. Use `.group open` or `.group close`" }, { quoted: msg });
+                    }
+                    break;
+                }
+
+                case 'togcstatus': {
+                    if (!isGroup) return;
+                    if (!query) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Provide a description parameter." }, { quoted: msg });
+                        return;
+                    }
+                    try {
+                        await sock.groupUpdateDescription(from, query);
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Group description shifted successfully." }, { quoted: msg });
+                    } catch (e) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to shift description. Grant me admin rights." }, { quoted: msg });
+                    }
+                    break;
+                }
+
+                // ⚙️ OWNER CONFIGURATION CONTROLS
+                case 'setprefix': {
+                    if (!isOwner) return;
+                    const newPrefix = args[0];
+                    if (!newPrefix) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Specify a new prefix symbol." }, { quoted: msg });
+                        return;
+                    }
+                    CONFIG.PREFIX = newPrefix;
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + `Prefix symbol shifted successfully to: *${newPrefix}*` }, { quoted: msg });
+                    break;
+                }
+
+                case 'mute': {
+                    if (!isOwner) return;
+                    const target = mentioned[0] || (args[0] ? `${args[0].replace(/[^0-9]/g, '')}@s.whatsapp.net` : null);
+                    if (!target) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Tag or enter the phone number of the thrall to mute." }, { quoted: msg });
+                        return;
+                    }
+                    if (MUTED_USERS.includes(cleanJid(target))) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity is already muted." }, { quoted: msg });
+                    } else {
+                        MUTED_USERS.push(cleanJid(target));
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `Successfully muted @${target.split('@')[0]}. They may no longer run commands.`, mentions: [target] }, { quoted: msg });
+                    }
+                    break;
+                }
+
+                case 'unmute': {
+                    if (!isOwner) return;
+                    const target = mentioned[0] || (args[0] ? `${args[0].replace(/[^0-9]/g, '')}@s.whatsapp.net` : null);
+                    if (!target) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Tag or enter the phone number of the thrall to unmute." }, { quoted: msg });
+                        return;
+                    }
+                    const cleanTarget = cleanJid(target);
+                    const index = MUTED_USERS.indexOf(cleanTarget);
+                    if (index > -1) {
+                        MUTED_USERS.splice(index, 1);
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `Successfully unmuted @${target.split('@')[0]}. Their vocal chords are unbound.`, mentions: [target] }, { quoted: msg });
+                    } else {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity is not muted." }, { quoted: msg });
+                    }
+                    break;
+                }
+
+                case 'addsudo': {
+                    if (!isOwner) return;
+                    const targetJid = mentioned[0] || (args[0] ? `${args[0].replace(/[^0-9]/g, '')}@s.whatsapp.net` : null);
+                    if (!targetJid) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "Tag or enter the phone number of the thrall to delegate authority to." }, { quoted: msg });
+                        return;
+                    }
+                    if (CONFIG.OWNERS.includes(targetJid)) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity already holds delegated authority." }, { quoted: msg });
+                    } else {
+                        CONFIG.OWNERS.push(targetJid);
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `Successfully elevated @${targetJid.split('@')[0]} into the Sudo/Owner list.`, mentions: [targetJid] }, { quoted: msg });
+                    }
                     break;
                 }
 
@@ -829,7 +1053,14 @@ async function startBot() {
                     break;
                 }
 
-                // 🌐 CELESTIAL REPOSITORY SYNCHRONIZER (Owner Only)
+                case 'restart': {
+                    if (!isOwner) return;
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Restarting the physical container. Shutting down." }, { quoted: msg });
+                    await new Promise(r => setTimeout(r, 2000));
+                    process.exit(0);
+                    break;
+                }
+
                 case 'update': {
                     if (!isOwner) {
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + "You hold no authority to shift my configurations." }, { quoted: msg });
