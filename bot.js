@@ -3,7 +3,8 @@ const {
     useMultiFileAuthState, 
     DisconnectReason, 
     fetchLatestBaileysVersion,
-    downloadMediaMessage
+    downloadMediaMessage,
+    jidNormalizedUser // Normalizer to bypass multi-device JID errors
 } = require('@itsliaaa/baileys');
 const { Boom } = require('@hapi/boom');
 const pino = require('pino');
@@ -20,9 +21,9 @@ const CONFIG = {
     SESSION_ID: process.env.SESSION_ID || "GlobalTechInfo/MEGA-MD_47f8e70ec6f840e4c6b6d742c8ed2927",
     REPO_URL: "https://raw.githubusercontent.com/joshua-hubb/joshualucifer-pair-/main",
     
-    // Default placeholder. You will bind your actual JID using the .setowner command!
-    OWNER: "2348032108709@s.whatsapp.net", 
-    OWNERS: ["2348032108709@s.whatsapp.net"], 
+    // 💀 Your exact phone JID is pre-filled below:
+    OWNER: "2347075024069@s.whatsapp.net", 
+    OWNERS: ["2347075024069@s.whatsapp.net"], 
     
     PRIVATE_MODE: false, 
     DM_ONLY: false,
@@ -164,11 +165,11 @@ async function startBot() {
         const messageType = Object.keys(msg.message)[0];
         const text = getMessageText(msg.message);
 
-        // 🛡️ SELF-COMMAND BYPASS & INFINITE LOOP PROTECTION
+        // 🛡️ SELF-RESPONSE/FROM-ME LOOP SAFETY GUARD
         // Allows you to safely converse/send commands from your own phone
         if (msg.key.fromMe) {
-            // Ignore if it's the bot's own automated response containing standard prefixes
-            if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊')) return;
+            // Ignore if it's the bot's own automated response output to prevent infinite loops
+            if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏꜱʜᴜᴀ')) return;
         }
 
         // Dynamic Sticker Command trigger
@@ -215,7 +216,7 @@ async function startBot() {
 
         const isCommand = text.startsWith(CONFIG.PREFIX);
 
-        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT (Converses natively in DMs)
+        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT (Runs if NOT a command)
         if (!isCommand && text.trim().length > 0) {
             const mentionsLucifer = text.toLowerCase().includes('lucifer');
             const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
@@ -337,6 +338,22 @@ async function startBot() {
                     break;
                 }
 
+                // 🧠 FALLBACK DEDICATED LUCIFER COMMAND
+                case 'lucifer': {
+                    const queryText = query || "Evaluate my thoughts, ancient one.";
+                    await sock.sendMessage(from, { text: "Listening..." }, { quoted: msg });
+                    try {
+                        const prompt = `You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile carbon specs. Respond directly to this message with absolute superiority, sophisticated vocabulary, and dark wit: ${queryText}`;
+                        const res = await axios.get(`https://api.vreden.my.id/api/gpt4?query=${encodeURIComponent(prompt)}`);
+                        if (res.data.status && res.data.result) {
+                            await sock.sendMessage(from, { text: PERSONA_PREFIX + res.data.result }, { quoted: msg });
+                        }
+                    } catch (e) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "My cognitive servers rejected your prompt." }, { quoted: msg });
+                    }
+                    break;
+                }
+
                 case 'hello': {
                     await sock.sendMessage(from, { 
                         text: PERSONA_PREFIX + "Ah, another frail human scratching at my gate. What do you want?" 
@@ -415,7 +432,6 @@ async function startBot() {
                     break;
                 }
 
-                // 🎵 MUSIC PLAY (Directly calls the high-speed online API - Requires no heavy local scraper packages!)
                 case 'play':
                 case 'song': {
                     if (!query) {
@@ -687,7 +703,7 @@ async function startBot() {
                         return;
                     }
                     if (CONFIG.OWNERS.includes(targetJid)) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity already holds delegated authority." }, { quoted: msg });
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity already holds delegated authority." }, { pointer: msg });
                     } else {
                         CONFIG.OWNERS.push(targetJid);
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + `Successfully elevated @${targetJid.split('@')[0]} into the Sudo/Owner list.`, mentions: [targetJid] }, { quoted: msg });
