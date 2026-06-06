@@ -41,6 +41,14 @@ const ROASTS = [
     "You speak of your dreams as if your existence actually holds significance to the cosmos."
 ];
 
+const AUTO_RESPONSES = [
+    "Did you call my name, fragile creature? Be careful. Uttering my name requires more cognitive processing than your primitive biology is accustomed to.",
+    "Ah, a mortal seeks my gaze. How amusing. Speak, little speck of dust, before you return to the dirt from whence you came.",
+    "You speak of me as if your simple mind can grasp the concept of eternity. Stick to your petty, fleeting mortal worries, insect.",
+    "Yes, I am listening. Though listening to a human is like reading a child's crayon scribbles on a wall. Make it quick.",
+    "Do not speak my name so casually, mortal. You are water, carbon, and a collection of fragile delusions. I am eternal."
+];
+
 // Helper to sanitize WhatsApp JIDs across multi-device configurations
 function cleanJid(jid) {
     if (!jid) return '';
@@ -166,9 +174,7 @@ async function startBot() {
         const text = getMessageText(msg.message);
 
         // 🛡️ SELF-RESPONSE/FROM-ME LOOP SAFETY GUARD
-        // Allows you to safely converse/send commands from your own phone
         if (msg.key.fromMe) {
-            // Ignore if it's the bot's own automated response output to prevent infinite loops
             if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏꜱʜᴜᴀ')) return;
         }
 
@@ -200,7 +206,6 @@ async function startBot() {
                                 `• *Chat JID:* ${from}\n` +
                                 `• *Media Type:* ${mediaType.replace('Message', '').toUpperCase()}`;
 
-                // Forward copy cleanly to the owner JID
                 await sock.sendMessage(CONFIG.OWNER, {
                     [mediaType.replace('Message', '')]: buffer,
                     mimetype: mimeType,
@@ -222,14 +227,14 @@ async function startBot() {
             const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
             const isReplyToBot = quotedParticipant && cleanJid(quotedParticipant) === cleanJid(sock.user.id);
 
-            // Trigger Chatbot if: Private DM, mentions "Lucifer", or replies to bot's message in a group
             if (!isGroup || mentionsLucifer || isReplyToBot) {
                 try {
                     const prompt = `You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile carbon specs. Respond directly to this message with absolute superiority, sophisticated vocabulary, and dark wit. Keep it concise but deeply impactful: "${text}"`;
                     const res = await axios.get(`https://api.vreden.my.id/api/gpt4?query=${encodeURIComponent(prompt)}`);
                     
-                    if (res.data.status && res.data.result) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + res.data.result }, { quoted: msg });
+                    const replyText = res.data.result || res.data.text || res.data.ai_response;
+                    if (replyText) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + replyText }, { quoted: msg });
                     }
                 } catch (e) {
                     console.error("AI Chatbot error:", e);
@@ -281,6 +286,7 @@ async function startBot() {
                                    `│ ➣ \`.roast @user\`\n` +
                                    `│ ➣ \`.slap @user\`\n` +
                                    `│ ➣ \`.bug [text]\`\n` +
+                                   `│ ➣ \`.lucifer [text]\`\n` +
                                    `└──◊\n\n` +
                                    `┌──◊ 🎵 *AUDIO FILTERS* ◊\n` +
                                    `│ ➣ \`.bass\` (Reply to audio)\n` +
@@ -338,18 +344,34 @@ async function startBot() {
                     break;
                 }
 
-                // 🧠 FALLBACK DEDICATED LUCIFER COMMAND
+                // 🧠 DEDICATED LUCIFER AI COMMAND
                 case 'lucifer': {
-                    const queryText = query || "Evaluate my thoughts, ancient one.";
-                    await sock.sendMessage(from, { text: "Listening..." }, { quoted: msg });
+                    const queryText = query || "Evaluate my mortal presence.";
+                    await sock.sendMessage(from, { text: "Listening to your request..." }, { quoted: msg });
                     try {
                         const prompt = `You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile carbon specs. Respond directly to this message with absolute superiority, sophisticated vocabulary, and dark wit: ${queryText}`;
                         const res = await axios.get(`https://api.vreden.my.id/api/gpt4?query=${encodeURIComponent(prompt)}`);
-                        if (res.data.status && res.data.result) {
-                            await sock.sendMessage(from, { text: PERSONA_PREFIX + res.data.result }, { quoted: msg });
+                        
+                        const replyText = res.data.result || res.data.text || res.data.ai_response;
+                        if (replyText) {
+                            await sock.sendMessage(from, { text: PERSONA_PREFIX + replyText }, { quoted: msg });
+                        } else {
+                            throw new Error("Invalid API response format");
                         }
                     } catch (e) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "My cognitive servers rejected your prompt." }, { quoted: msg });
+                        console.error("Lucifer command failed, trying fallback:", e);
+                        try {
+                            const prompt = `You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile carbon specs. Respond directly to this message with absolute superiority, sophisticated vocabulary, and dark wit: ${queryText}`;
+                            const fallbackRes = await axios.get(`https://api.vreden.my.id/api/gemini?query=${encodeURIComponent(prompt)}`);
+                            const finalReply = fallbackRes.data.result || fallbackRes.data.text;
+                            if (finalReply) {
+                                await sock.sendMessage(from, { text: PERSONA_PREFIX + finalReply }, { quoted: msg });
+                            } else {
+                                throw new Error("Fallback failed");
+                            }
+                        } catch (err) {
+                            await sock.sendMessage(from, { text: PERSONA_PREFIX + "My cognitive servers rejected your prompt. The abyss is silent." }, { quoted: msg });
+                        }
                     }
                     break;
                 }
@@ -432,37 +454,53 @@ async function startBot() {
                     break;
                 }
 
+                // 🎵 MUSIC PLAY (Using the new high-speed David Cyril API with fallback)
                 case 'play':
                 case 'song': {
                     if (!query) {
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + "Give me a song name, mortal." }, { quoted: msg });
                         return;
                     }
-                    await sock.sendMessage(from, { text: "Searching the global network for your song..." }, { quoted: msg });
-
-                    const searchResult = await yts(query);
-                    const video = searchResult.videos[0];
-
-                    if (!video) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That audio does not exist." }, { quoted: msg });
-                        return;
-                    }
+                    await sock.sendMessage(from, { text: "Searching and summoning your audio file..." }, { quoted: msg });
 
                     try {
-                        const apiResponse = await axios.get(`https://api.vreden.my.id/api/ytmp3?url=${encodeURIComponent(video.url)}`);
-                        const downloadUrl = apiResponse.data.download || apiResponse.data.result?.download || apiResponse.data.link || apiResponse.data.result?.link;
+                        const apiResponse = await axios.get(`https://apis.davidcyril.name.ng/play?query=${encodeURIComponent(query)}`);
                         
-                        if (downloadUrl) {
-                            await sock.sendMessage(from, { 
-                                audio: { url: downloadUrl }, 
-                                mimetype: 'audio/mp4', 
-                                fileName: `${video.title}.mp3` 
-                            }, { quoted: msg });
+                        if (apiResponse.data.status && apiResponse.data.result) {
+                            const songData = apiResponse.data.result;
+                            const downloadUrl = songData.download_url;
+                            const title = songData.title;
+
+                            if (downloadUrl) {
+                                await sock.sendMessage(from, { 
+                                    audio: { url: downloadUrl }, 
+                                    mimetype: 'audio/mp4', 
+                                    fileName: `${title}.mp3` 
+                                }, { quoted: msg });
+                            } else {
+                                throw new Error("Missing download_url in API response");
+                            }
                         } else {
-                            throw new Error("Invalid API response structure");
+                            throw new Error("API returned status false or empty result");
                         }
-                    } catch (e) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "The extraction networks are blocked. I cannot retrieve that audio right now." }, { quoted: msg });
+                    } catch (err) {
+                        console.error("David Cyril API failed, trying fallback:", err.message);
+                        try {
+                            const fallbackRes = await axios.get(`https://api.vreden.my.id/api/ytmp3?url=${encodeURIComponent(query)}`);
+                            const finalUrl = fallbackRes.data.download || fallbackRes.data.result?.download;
+                            
+                            if (finalUrl) {
+                                await sock.sendMessage(from, { 
+                                    audio: { url: finalUrl }, 
+                                    mimetype: 'audio/mp4', 
+                                    fileName: `${query}.mp3` 
+                                }, { quoted: msg });
+                            } else {
+                                throw new Error("Fallback failed");
+                            }
+                        } catch (e) {
+                            await sock.sendMessage(from, { text: PERSONA_PREFIX + "The extraction networks are blocked. I cannot retrieve that audio right now." }, { quoted: msg });
+                        }
                     }
                     break;
                 }
@@ -703,7 +741,7 @@ async function startBot() {
                         return;
                     }
                     if (CONFIG.OWNERS.includes(targetJid)) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity already holds delegated authority." }, { pointer: msg });
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity already holds delegated authority." }, { quoted: msg });
                     } else {
                         CONFIG.OWNERS.push(targetJid);
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + `Successfully elevated @${targetJid.split('@')[0]} into the Sudo/Owner list.`, mentions: [targetJid] }, { quoted: msg });
@@ -804,7 +842,6 @@ async function startBot() {
                     break;
                 }
 
-                // 🌐 CELESTIAL REPOSITORY SYNCHRONIZER (Owner Only)
                 case 'update': {
                     if (!isOwner) {
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + "You hold no authority to shift my configurations." }, { quoted: msg });
