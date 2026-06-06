@@ -3,8 +3,7 @@ const {
     useMultiFileAuthState, 
     DisconnectReason, 
     fetchLatestBaileysVersion,
-    downloadMediaMessage,
-    jidNormalizedUser // Normalizer to bypass multi-device JID errors
+    downloadMediaMessage
 } = require('@itsliaaa/baileys');
 const { Boom } = require('@hapi/boom');
 const pino = require('pino');
@@ -13,6 +12,7 @@ const path = require('path');
 const axios = require('axios');
 const yts = require('yt-search');
 const googleTTS = require('google-tts-api');
+const yt = require('@vreden/youtube_scraper');
 const { exec } = require('child_process');
 
 // 💀 GLOBAL BOT CONFIGURATION
@@ -20,9 +20,9 @@ const CONFIG = {
     SESSION_ID: process.env.SESSION_ID || "GlobalTechInfo/MEGA-MD_47f8e70ec6f840e4c6b6d742c8ed2927",
     REPO_URL: "https://raw.githubusercontent.com/joshua-hubb/joshualucifer-pair-/main",
     
-    // 💀 Your exact phone JID is pre-filled below:
-    OWNER: "2347075024069@s.whatsapp.net", 
-    OWNERS: ["2347075024069@s.whatsapp.net"], 
+    // Default placeholder. You will bind your actual JID using the .setowner command!
+    OWNER: "2348032108709@s.whatsapp.net", 
+    OWNERS: ["2348032108709@s.whatsapp.net"], 
     
     PRIVATE_MODE: false, 
     DM_ONLY: false,
@@ -40,13 +40,27 @@ const ROASTS = [
     "You speak of your dreams as if your existence actually holds significance to the cosmos."
 ];
 
-const AUTO_RESPONSES = [
-    "Did you call my name, fragile creature? Be careful. Uttering my name requires more cognitive processing than your primitive biology is accustomed to.",
-    "Ah, a mortal seeks my gaze. How amusing. Speak, little speck of dust, before you return to the dirt from whence you came.",
-    "You speak of me as if your simple mind can grasp the concept of eternity. Stick to your petty, fleeting mortal worries, insect.",
-    "Yes, I am listening. Though listening to a human is like reading a child's crayon scribbles on a wall. Make it quick.",
-    "Do not speak my name so casually, mortal. You are water, carbon, and a collection of fragile delusions. I am eternal."
-];
+// Helper to sanitize WhatsApp JIDs across multi-device configurations
+function cleanJid(jid) {
+    if (!jid) return '';
+    const cleanUser = jid.split(':')[0].split('@')[0].trim().toLowerCase();
+    const domain = jid.split('@')[1] || 's.whatsapp.net';
+    return `${cleanUser}@${domain}`;
+}
+
+// Helper to extract text from various WhatsApp message payloads
+function getMessageText(message) {
+    if (!message) return "";
+    const type = Object.keys(message)[0];
+    if (type === 'conversation') return message.conversation;
+    if (type === 'extendedTextMessage') return message.extendedTextMessage.text;
+    if (type === 'imageMessage') return message.imageMessage.caption;
+    if (type === 'videoMessage') return message.videoMessage.caption;
+    if (type === 'buttonsResponseMessage') return message.buttonsResponseMessage.selectedButtonId;
+    if (type === 'templateButtonReplyMessage') return message.templateButtonReplyMessage.selectedId;
+    if (type === 'listResponseMessage') return message.listResponseMessage.singleSelectReply.selectedRowId;
+    return "";
+}
 
 // Helper function to automatically retrieve and unscramble your login credentials
 async function downloadSession() {
@@ -136,31 +150,25 @@ async function startBot() {
 
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
-        if (!msg.message) return; // Removed key.fromMe skip so you can control from your own phone!
+        if (!msg.message) return;
 
         const from = msg.key.remoteJid;
         const isGroup = from.endsWith('@g.us');
         
-        // Normalize JIDs to strip any multi-device suffixes (e.g. :4@s.whatsapp.net)
+        // Clean sender JID
         const sender = isGroup ? msg.key.participant : msg.key.remoteJid;
-        const cleanSender = jidNormalizedUser(sender);
-        const cleanOwner = jidNormalizedUser(CONFIG.OWNER);
-        const isOwner = (cleanSender === cleanOwner || CONFIG.OWNERS.map(o => jidNormalizedUser(o)).includes(cleanSender));
+        const cleanSender = cleanJid(sender);
+        const cleanOwner = cleanJid(CONFIG.OWNER);
+        const isOwner = (cleanSender === cleanOwner || CONFIG.OWNERS.map(o => cleanJid(o)).includes(cleanSender));
 
         const messageType = Object.keys(msg.message)[0];
-        let text = "";
-        
-        if (messageType === 'conversation') {
-            text = msg.message.conversation;
-        } else if (messageType === 'extendedTextMessage') {
-            text = msg.message.extendedTextMessage.text;
-        } else if (messageType === 'buttonsResponseMessage') {
-            text = msg.message.buttonsResponseMessage.selectedButtonId;
-        }
+        const text = getMessageText(msg.message);
 
-        // SELF-COMMAND BYPASS & INFINITE LOOP PROTECTION
+        // 🛡️ SELF-COMMAND BYPASS & INFINITE LOOP PROTECTION
+        // Allows you to safely converse/send commands from your own phone
         if (msg.key.fromMe) {
-            if (!text.startsWith(CONFIG.PREFIX)) return;
+            // Ignore if it's the bot's own automated response containing standard prefixes
+            if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊')) return;
         }
 
         // Dynamic Sticker Command trigger
@@ -207,11 +215,11 @@ async function startBot() {
 
         const isCommand = text.startsWith(CONFIG.PREFIX);
 
-        // INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT
+        // 🧠 INTELLIGENT AUTO-RESPONDER & DYNAMIC CHATBOT (Converses natively in DMs)
         if (!isCommand && text.trim().length > 0) {
             const mentionsLucifer = text.toLowerCase().includes('lucifer');
             const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
-            const isReplyToBot = quotedParticipant && jidNormalizedUser(quotedParticipant) === jidNormalizedUser(sock.user.id);
+            const isReplyToBot = quotedParticipant && cleanJid(quotedParticipant) === cleanJid(sock.user.id);
 
             // Trigger Chatbot if: Private DM, mentions "Lucifer", or replies to bot's message in a group
             if (!isGroup || mentionsLucifer || isReplyToBot) {
@@ -300,6 +308,7 @@ async function startBot() {
                                    `└──◊\n\n` +
                                    `┌──◊ ⚙️ *OWNER SETTINGS* ◊\n` +
                                    `│ ➣ \`.mode [private/public/dm]\`\n` +
+                                   `│ ➣ \`.setowner @user\`\n` +
                                    `│ ➣ \`.addsudo @user\`\n` +
                                    `│ ➣ \`.setstickercmd [cmd]\`\n` +
                                    `│ ➣ \`.runtime\`\n` +
@@ -308,6 +317,23 @@ async function startBot() {
                                    `└──◊`;
                     
                     await sock.sendMessage(from, { text: menuText }, { quoted: msg });
+                    break;
+                }
+
+                // 🛡️ DYNAMIC OWNER BINDING SYSTEM
+                case 'setowner': {
+                    const isPlaceholder = (cleanOwner.startsWith("2348032108709") || CONFIG.OWNER === "YOUR_NUMBER@s.whatsapp.net");
+                    
+                    if (isOwner || isPlaceholder) {
+                        const targetJid = mentioned[0] || cleanSender;
+                        CONFIG.OWNER = targetJid;
+                        if (!CONFIG.OWNERS.includes(targetJid)) {
+                            CONFIG.OWNERS.push(targetJid);
+                        }
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `I have recognized your spiritual authority. You are now my permanent master: @${targetJid.split('@')[0]}`, mentions: [targetJid] }, { quoted: msg });
+                    } else {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + "You hold no authority to reassign my ownership, mortal." }, { quoted: msg });
+                    }
                     break;
                 }
 
@@ -587,7 +613,7 @@ async function startBot() {
                 }
 
                 case 'getpp': {
-                    const targetJid = sender; // Set directly to sender to keep it robust
+                    const targetJid = sender;
                     const ppUrl = await sock.profilePictureUrl(targetJid, 'image').catch(() => null);
                     
                     if (ppUrl) {
@@ -762,6 +788,7 @@ async function startBot() {
                     break;
                 }
 
+                // 🌐 CELESTIAL REPOSITORY SYNCHRONIZER (Owner Only)
                 case 'update': {
                     if (!isOwner) {
                         await sock.sendMessage(from, { text: PERSONA_PREFIX + "You hold no authority to shift my configurations." }, { quoted: msg });
