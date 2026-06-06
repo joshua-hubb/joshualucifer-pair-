@@ -92,7 +92,7 @@ function getMessageText(message) {
 async function getLuciferAIResponse(userText) {
     const systemPrompt = "You are Joshua Lucifer, an ancient, highly intelligent, dark, superior, and condescending entity who views humans as fragile, short-lived carbon specks who are amusingly simple. Respond with absolute superiority, sophisticated vocabulary, and dark wit. Keep it relatively concise but deeply impactful.";
     
-    // Path 1: David Cyril's DeepSeek-V3 (GET Request - Ultra Stable)
+    // Path 1: David Cyril's DeepSeek-V3 (GET Request)
     try {
         const url = `https://apis.davidcyril.name.ng/ai/deepseek-v3?text=${encodeURIComponent(userText)}&systemPrompt=${encodeURIComponent(systemPrompt)}`;
         const res = await axios.get(url);
@@ -329,6 +329,8 @@ async function startBot() {
         const args = text.slice(CONFIG.PREFIX.length).trim().split(/ +/);
         const command = args.shift().toLowerCase();
         const query = args.join(' ');
+        
+        const mentioned = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
 
         try {
             switch (command) {
@@ -573,7 +575,7 @@ async function startBot() {
                     break;
                 }
 
-                // 🎵 MUSIC PLAY (Using the new high-speed David Cyril API with fallback)
+                // 🎵 MUSIC PLAY (Directly calls David Cyril's High-Speed API)
                 case 'play':
                 case 'song': {
                     if (!query) {
@@ -716,7 +718,7 @@ async function startBot() {
                     const hasQuotedAudio = quotedMsg?.audioMessage;
 
                     if (messageType !== 'audioMessage' && !hasQuotedAudio) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `Reply to an audio file with \text.${command}\` to apply filter.` }, { quoted: msg });
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `Reply to an audio file with \`text.${command}\` to apply filter.` }, { quoted: msg });
                         return;
                     }
 
