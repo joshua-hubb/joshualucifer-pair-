@@ -10,15 +10,23 @@ const { Boom } = require('@hapi/boom');
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
-const { handleCommand } = require('./commands'); // Separate command manager
+const axios = require('axios');
+const yts = require('yt-search');
+const googleTTS = require('google-tts-api');
+const yt = require('@vreden/youtube_scraper');
+const { exec } = require('child_process');
 
 // 💀 GLOBAL BOT CONFIGURATION
 const CONFIG = {
-    SESSION_ID: process.env.SESSION_ID || "GlobalTechInfo/MEGA-MD_47f8e70ec6f840e4c6b6d742c8ed2927",
+    // 💀 Your new Session ID has been pre-filled below:
+    SESSION_ID: process.env.SESSION_ID || "GlobalTechInfo/MEGA-MD_78f9de6d9d1bcddfbd4e5120919fee35",
     REPO_URL: "https://raw.githubusercontent.com/joshua-hubb/joshualucifer-pair-/main",
     GROQ_API_KEY: process.env.GROQ_API_KEY || "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",
+    
+    // 💀 Your phone JID is permanently pre-filled below:
     OWNER: "2348032108709@s.whatsapp.net", 
     OWNERS: ["2348032108709@s.whatsapp.net"], 
+    
     PRIVATE_MODE: false, 
     DM_ONLY: false,
     CHATBOT: true, // Dynamic Chatbot switch (On/Off)
@@ -26,10 +34,10 @@ const CONFIG = {
 };
 
 const PERSONA_PREFIX = "✨ *[Joshua Lucifer]* ✨\n\n";
+const STICKER_CMDS = {};
 const BOUNTIES = {};
 const AFK_USERS = {};
 const MUTED_USERS = [];
-const STICKER_CMDS = {};
 
 const CURSE_WEAPONS = [
     { name: "Scythe of the Underworld", desc: "Forged in the deepest fires of Tartarus, designed to harvest fragile mortal souls." },
@@ -190,7 +198,7 @@ async function startBot() {
 
         // 🛡️ SELF-RESPONSE/FROM-ME LOOP SAFETY GUARD
         if (msg.key.fromMe) {
-            if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏheader')) return;
+            if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏꜱʜᴜᴀ')) return;
         }
 
         // 👁️ DYNAMIC AFK CONTROLLER
