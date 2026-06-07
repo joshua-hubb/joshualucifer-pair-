@@ -15,7 +15,7 @@ const yts = require('yt-search');
 const googleTTS = require('google-tts-api');
 const yt = require('@vreden/youtube_scraper');
 const { exec } = require('child_process');
-const { handleCommand } = require('./commands'); // 💀 CRUCIAL FIX: Imports the separate command manager
+const { handleCommand } = require('./commands'); // Imports the separate command manager
 
 // 💀 GLOBAL BOT CONFIGURATION
 const CONFIG = {
@@ -77,17 +77,17 @@ function cleanJid(jid) {
     return `${cleanUser}@${domain}`;
 }
 
-// Helper to extract text from various WhatsApp message payloads
+// Helper to extract text from various WhatsApp message payloads (Upgraded with clean string fallbacks) [25]
 function getMessageText(message) {
     if (!message) return "";
     const type = Object.keys(message)[0];
-    if (type === 'conversation') return message.conversation;
-    if (type === 'extendedTextMessage') return message.extendedTextMessage.text;
-    if (type === 'imageMessage') return message.imageMessage.caption;
-    if (type === 'videoMessage') return message.videoMessage.caption;
-    if (type === 'buttonsResponseMessage') return message.buttonsResponseMessage.selectedButtonId;
-    if (type === 'templateButtonReplyMessage') return message.templateButtonReplyMessage.selectedId;
-    if (type === 'listResponseMessage') return message.listResponseMessage.singleSelectReply.selectedRowId;
+    if (type === 'conversation') return message.conversation || "";
+    if (type === 'extendedTextMessage') return message.extendedTextMessage.text || "";
+    if (type === 'imageMessage') return message.imageMessage.caption || "";
+    if (type === 'videoMessage') return message.videoMessage.caption || "";
+    if (type === 'buttonsResponseMessage') return message.buttonsResponseMessage.selectedButtonId || "";
+    if (type === 'templateButtonReplyMessage') return message.templateButtonReplyMessage.selectedId || "";
+    if (type === 'listResponseMessage') return message.listResponseMessage?.singleSelectReply?.selectedRowId || "";
     return "";
 }
 
@@ -191,7 +191,9 @@ async function startBot() {
         const isOwner = (cleanSender === cleanOwner || CONFIG.OWNERS.map(o => cleanJid(o)).includes(cleanSender));
 
         const messageType = Object.keys(msg.message)[0];
-        let text = getMessageText(msg.message);
+        
+        // Upgraded with safe string fallback [25]
+        let text = getMessageText(msg.message) || "";
 
         // 🛡️ MUTED USERS CHECK
         if (MUTED_USERS.includes(cleanSender) && !isOwner) return;
