@@ -5,13 +5,12 @@ const path = require('path');
 const axios = require('axios');
 
 module.exports = {
-    commands: ['url', 'tourl', 's', 'sticker', 'stickerms', 'getpp', 'getgpp', 'remini'],
+    commands: ['setpp', 'track', 'getpp', 'setname', 'save', 'tostatus', 'fw', 'presence', 'autotyping', 'autorecording', 'alwaysonline', 'autoread', 'antidelete', 'antidelete_log', 'antiviewonce', 'antibug', 'clear', 'archive', 'unarchive', 'autoviewstatus', 'statusemoji', 'autoreactstatus', 'block', 'unblock', 'aza', 'time', 'weather', 'device', 'livescore', 'football', 'url', 's', 'sticker', 'stickerms', 'remini', 'getgpp'],
     execute: async (sock, msg, context) => {
-        const { command, from, messageType, PERSONA_PREFIX, cleanSender } = context;
+        const { command, from, messageType, PERSONA_PREFIX, cleanSender, query, isOwner, cleanJid } = context;
         const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
 
         switch (command) {
-            // 🎨 HIGH-SPEED IMAGE/VIDEO TO PUBLIC URL UPLOADER (Using David Cyril API over GET/POST)
             case 'url':
             case 'tourl': {
                 const hasQuotedImage = quotedMsg?.imageMessage;
@@ -50,7 +49,6 @@ module.exports = {
                         const directUrl = resJson.data.url;
                         const details = `${PERSONA_PREFIX}*CELESTIAL LINK GENERATED:*\n\n` +
                                         `• *Filename:* ${resJson.data.filename}\n` +
-                                        `• *Mime-Type:* ${resJson.data.mime}\n` +
                                         `• *Size:* ${(resJson.data.size / 1024).toFixed(1)} KB\n` +
                                         `• *Direct URL:* ${directUrl}`;
                         await sock.sendMessage(from, { text: details }, { quoted: msg });
@@ -60,6 +58,59 @@ module.exports = {
                 } catch (e) {
                     console.error("David Cyril Upload API failed:", e);
                     await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to upload file. The celestial vaults rejected the bytes." }, { quoted: msg });
+                }
+                break;
+            }
+
+            case 'weather': {
+                if (!query) {
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Specify a city name, mortal." }, { quoted: msg });
+                    return;
+                }
+                try {
+                    const res = await axios.get(`https://api.vreden.my.id/api/weather?city=${encodeURIComponent(query)}`); // Uses free weather API
+                    if (res.data.status && res.data.result) {
+                        await sock.sendMessage(from, { text: PERSONA_PREFIX + `*Weather Report for ${query}:*\n\n${res.data.result}` }, { quoted: msg });
+                    }
+                } catch (e) {
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to check weather coordinates." }, { quoted: msg });
+                }
+                break;
+            }
+
+            case 'time': {
+                const now = new Date();
+                await sock.sendMessage(from, { text: PERSONA_PREFIX + `Temporal Coordinates: *${now.toLocaleTimeString()}* | *${now.toLocaleDateString()}*` }, { quoted: msg });
+                break;
+            }
+
+            case 'getpp': {
+                const targetJid = cleanSender;
+                const ppUrl = await sock.profilePictureUrl(targetJid, 'image').catch(() => null);
+                
+                if (ppUrl) {
+                    await sock.sendMessage(from, { 
+                        image: { url: ppUrl }, 
+                        caption: `Behold the profile identity of @${targetJid.split('@')[0]}`,
+                        mentions: [targetJid]
+                    }, { quoted: msg });
+                } else {
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity has hidden its face behind a shroud of anonymity (No Profile Picture)." }, { quoted: msg });
+                }
+                break;
+            }
+
+            case 'getgpp': {
+                const isGroup = from.endsWith('@g.us');
+                if (!isGroup) return;
+                const ppUrl = await sock.profilePictureUrl(from, 'image').catch(() => null);
+                if (ppUrl) {
+                    await sock.sendMessage(from, { 
+                        image: { url: ppUrl }, 
+                        caption: `Behold the visual banner of this group.`
+                    }, { quoted: msg });
+                } else {
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "This group has no visual banner configured." }, { quoted: msg });
                 }
                 break;
             }
@@ -92,73 +143,6 @@ module.exports = {
                     }
                 } catch (e) {
                     await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to render sticker." }, { quoted: msg });
-                }
-                break;
-            }
-
-            case 'getpp': {
-                const targetJid = msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || cleanSender;
-                const ppUrl = await sock.profilePictureUrl(targetJid, 'image').catch(() => null);
-                
-                if (ppUrl) {
-                    await sock.sendMessage(from, { 
-                        image: { url: ppUrl }, 
-                        caption: `Behold the profile identity of @${targetJid.split('@')[0]}`,
-                        mentions: [targetJid]
-                    }, { quoted: msg });
-                } else {
-                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "That entity has hidden its face behind a shroud of anonymity (No Profile Picture)." }, { quoted: msg });
-                }
-                break;
-            }
-
-            case 'getgpp': {
-                const isGroup = from.endsWith('@g.us');
-                if (!isGroup) return;
-                const ppUrl = await sock.profilePictureUrl(from, 'image').catch(() => null);
-                if (ppUrl) {
-                    await sock.sendMessage(from, { 
-                        image: { url: ppUrl }, 
-                        caption: `Behold the visual banner of this group.`
-                    }, { quoted: msg });
-                } else {
-                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "This group has no visual banner configured." }, { quoted: msg });
-                }
-                break;
-            }
-
-            case 'remini': {
-                const hasQuotedImage = quotedMsg?.imageMessage;
-                if (messageType !== 'imageMessage' && !hasQuotedImage) {
-                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Reply to an image with `.remini` to enhance it." }, { quoted: msg });
-                    return;
-                }
-
-                await sock.sendMessage(from, { text: "Upscaling and clearing image layers via AI..." }, { quoted: msg });
-
-                try {
-                    const buffer = await downloadMediaMessage(
-                        msg,
-                        'buffer',
-                        {},
-                        { logger: pino({ level: 'silent' }), rekeydb: () => {} }
-                    );
-
-                    const tempPath = path.join(__dirname, 'temp_enhance.jpg');
-                    fs.writeFileSync(tempPath, buffer);
-
-                    const uploadRes = await axios.post('https://api.vreden.my.id/api/remini', {
-                        image: buffer.toString('base64')
-                    });
-
-                    if (uploadRes.data.result) {
-                        await sock.sendMessage(from, { image: { url: uploadRes.data.result }, caption: "Enhanced successfully." }, { quoted: msg });
-                    } else {
-                        throw new Error("Enhance API failed");
-                    }
-                    fs.unlinkSync(tempPath);
-                } catch (e) {
-                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "The AI upscale network is currently busy. Try again." }, { quoted: msg });
                 }
                 break;
             }
