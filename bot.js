@@ -15,15 +15,15 @@ const yts = require('yt-search');
 const googleTTS = require('google-tts-api');
 const yt = require('@vreden/youtube_scraper');
 const { exec } = require('child_process');
+const { handleCommand } = require('./commands'); // 💀 CRUCIAL FIX: Imports the separate command manager
 
 // 💀 GLOBAL BOT CONFIGURATION
 const CONFIG = {
-    // 💀 Your new Session ID has been pre-filled below:
     SESSION_ID: process.env.SESSION_ID || "GlobalTechInfo/MEGA-MD_78f9de6d9d1bcddfbd4e5120919fee35",
     REPO_URL: "https://raw.githubusercontent.com/joshua-hubb/joshualucifer-pair-/main",
     GROQ_API_KEY: process.env.GROQ_API_KEY || "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",
     
-    // 💀 Your phone JID is permanently pre-filled below:
+    // 💀 Your exact phone JID is permanently pre-filled below:
     OWNER: "2348032108709@s.whatsapp.net", 
     OWNERS: ["2348032108709@s.whatsapp.net"], 
     
