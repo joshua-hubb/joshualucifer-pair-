@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const jidNormalizedUser = require('@itsliaaa/baileys').jidNormalizedUser;
 
 const plugins = {};
 let getLuciferAIResponse = null;
@@ -14,7 +15,6 @@ const loadPlugins = () => {
     const files = fs.readdirSync(pluginsPath).filter(file => file.endsWith('.js'));
     for (const file of files) {
         try {
-            // Delete cache if reloading
             delete require.cache[require.resolve(path.join(pluginsPath, file))];
             const plugin = require(path.join(pluginsPath, file));
             
@@ -23,7 +23,6 @@ const loadPlugins = () => {
                     plugins[cmdName] = plugin.execute;
                 }
             }
-            // Export the AI helper globally so commands.js can call it for chatbot
             if (plugin.getLuciferAIResponse) {
                 getLuciferAIResponse = plugin.getLuciferAIResponse;
             }
@@ -37,13 +36,11 @@ const loadPlugins = () => {
 loadPlugins();
 
 async function handleCommand(sock, msg, context) {
-    const { text, command, isCommand, isGroup, cleanSender, from, PERSONA_PREFIX, CONFIG } = context;
+    const { text, command, isCommand, isGroup, cleanSender, from, CONFIG } = context;
 
     // 1. If it's a command, execute the matching plugin
     if (isCommand && plugins[command]) {
         try {
-            // Inject the JID conversion helper and the chatbot helper into the command context
-            context.cleanJid = (jid) => jid.split(':')[0].split('@')[0].trim().toLowerCase() + '@s.whatsapp.net';
             context.getLuciferAIResponse = getLuciferAIResponse;
             await plugins[command](sock, msg, context);
         } catch (err) {
@@ -52,23 +49,24 @@ async function handleCommand(sock, msg, context) {
         return;
     }
 
-    // 2. If it's NOT a command, let's run the dynamic AI chatbot!
+    // 2. Chatbot Auto-Responder Logic with On/Off State Filter [1]
     if (!isCommand && text.trim().length > 0) {
-        const mentionsLucifer = text.toLowerCase().includes('lucifer');
+        const mentionsLucifer = text.toLowerCase().includes('lucifer') || text.toLowerCase().includes('joshua');
         const quotedParticipant = msg.message?.extendedTextMessage?.contextInfo?.participant;
         const isReplyToBot = quotedParticipant && (quotedParticipant.split(':')[0].split('@')[0].trim().toLowerCase() + '@s.whatsapp.net' === jidNormalizedUser(sock.user.id));
 
-        // Trigger Chatbot if: Private DM, mentions "Lucifer", or replies to bot's message in a group
-        if (!isGroup || mentionsLucifer || isReplyToBot) {
-            if (getLuciferAIResponse) {
-                try {
-                    const reply = await getLuciferAIResponse(text, CONFIG.GROQ_API_KEY);
-                    if (reply) {
-                        await sock.sendMessage(from, { text: PERSONA_PREFIX + reply }, { quoted: msg });
-                    }
-                } catch (e) {
-                    console.error("AI Chatbot completely failed:", e.message);
+        // 🛡️ CHATBOT CONTROLLER BYPASS [1]
+        // If CONFIG.CHATBOT is true, triggers on all private DMs. If false, it only triggers if they say "Lucifer/Joshua" or reply [1].
+        const shouldTriggerAI = (CONFIG.CHATBOT && !isGroup) || mentionsLucifer || isReplyToBot;
+
+        if (shouldTriggerAI && getLuciferAIResponse) {
+            try {
+                const reply = await getLuciferAIResponse(text, CONFIG.GROQ_API_KEY);
+                if (reply) {
+                    await sock.sendMessage(from, { text: context.PERSONA_PREFIX + reply }, { quoted: msg });
                 }
+            } catch (e) {
+                console.error("AI Chatbot completely failed:", e.message);
             }
         }
     }
