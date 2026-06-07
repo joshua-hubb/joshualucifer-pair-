@@ -22,8 +22,10 @@ module.exports = {
                        `✨ │ *SPEED* : ${speed} ms\n` +
                        `✨ │ *RAM* : [${progressBar}] ${ramPercentage}%\n` +
                        `✨ └\n\n` +
-                       `┌──◊ 🧠 *ABYSS & DEMONIC ARTS* ◊\n` +
+                       `┌──◊ 🧠 *AI & CHATBOT* ◊\n` +
                        `│ ➣ \`.lucifer [text]\` — Converse with the supreme ruler\n` +
+                       `│ ➣ \`.gojo [text]\` — Converse with the strongest sorcerer\n` +
+                       `│ ➣ \`.chatbot [on/off]\` — Toggle auto-responder in DMs [1]\n` +
                        `│ ➣ \`.demonarts\` — View forbidden arts\n` +
                        `│ ➣ \`.summon\` — View current weapons of the abyss\n` +
                        `│ ➣ \`.curse\` — Draw a legendary tool of torture\n` +
