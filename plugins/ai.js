@@ -2,29 +2,10 @@ const axios = require('axios');
 
 async function getLuciferAIResponse(userText, apiKey) {
     const systemPrompt = "You are Joshua Lucifer, the ancient, supreme, and highly intelligent ruler of the abyss. You look down on humans as fragile carbon specks. You possess absolute, unbeatable debating skills and never lose an argument. Speak with proud superiority, sophisticated vocabulary, and devastating dark wit. Keep your responses extremely short, sharp, and direct (under 2-3 sentences), unless the user explicitly asks for a long explanation.";
-    
     try {
-        const response = await axios.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            {
-                model: "llama-3.1-8b-instant", // Blazing fast sub-second generation model on Groq!
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: userText }
-                ],
-                temperature: 0.7
-            },
-            {
-                headers: {
-                    "Authorization": `Bearer ${apiKey}`,
-                    "Content-Type": "application/json"
-                }
-            }
-        );
-
-        if (response.data.choices && response.data.choices[0].message.content) {
-            return response.data.choices[0].message.content.trim();
-        }
+        const url = `https://apis.davidcyril.name.ng/ai/deepseek-v3?text=${encodeURIComponent(userText)}&systemPrompt=${encodeURIComponent(systemPrompt)}`;
+        const res = await axios.get(url);
+        if (res.data.success && res.data.result) return res.data.result;
     } catch (e) {
         console.error("Groq AI Error:", e.message);
     }
@@ -32,52 +13,80 @@ async function getLuciferAIResponse(userText, apiKey) {
 }
 
 module.exports = {
-    commands: ['lucifer', 'gpt', 'gemini', 'story', 'gojo', 'chatbot'],
+    commands: ['lucifer', 'ai', 'gojo', 'debug', 'summon', 'read', 'imagine', 'chatbot'],
     execute: async (sock, msg, context) => {
         const { command, query, args, from, PERSONA_PREFIX, CONFIG, isOwner } = context;
 
-        // 🛡️ CHATBOT ON/OFF CONTROLLER
-        if (command === 'chatbot') {
-            if (!isOwner) {
-                await sock.sendMessage(from, { text: PERSONA_PREFIX + "You hold no keys to my conversational matrices, worm." }, { quoted: msg });
-                return;
+        switch (command) {
+            case 'chatbot': {
+                if (!isOwner) {
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "You hold no keys to my conversational matrices, worm." }, { quoted: msg });
+                    return;
+                }
+                const action = args[0]?.toLowerCase();
+                if (action === 'on') {
+                    CONFIG.CHATBOT = true;
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Chatbot mode *activated*." }, { quoted: msg });
+                } else if (action === 'off') {
+                    CONFIG.CHATBOT = false;
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Chatbot mode *deactivated* [1]." }, { quoted: msg });
+                } else {
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Use `.chatbot on` or `.chatbot off` [1]." }, { quoted: msg });
+                }
+                break;
             }
-            const action = args[0]?.toLowerCase();
-            if (action === 'on') {
-                CONFIG.CHATBOT = true;
-                await sock.sendMessage(from, { text: PERSONA_PREFIX + "Chatbot mode *activated*. I will now respond automatically to all private messages." }, { quoted: msg });
-            } else if (action === 'off') {
-                CONFIG.CHATBOT = false;
-                await sock.sendMessage(from, { text: PERSONA_PREFIX + "Chatbot mode *deactivated*. I will now only respond if you mention my name ('Lucifer' or 'Joshua') [1]." }, { quoted: msg });
-            } else {
-                await sock.sendMessage(from, { text: PERSONA_PREFIX + "Invalid parameter. Use `.chatbot on` or `.chatbot off` [1]." }, { quoted: msg });
+
+            case 'lucifer':
+            case 'ai':
+            case 'summon': {
+                if (!query) {
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Speak. I will not analyze your empty silence." }, { quoted: msg });
+                    return;
+                }
+                await sock.sendMessage(from, { text: "Listening to your request..." }, { quoted: msg });
+                const reply = await getLuciferAIResponse(query, CONFIG.GROQ_API_KEY);
+                await sock.sendMessage(from, { text: PERSONA_PREFIX + (reply || "My servers are currently occupied.") }, { quoted: msg });
+                break;
             }
-            return;
-        }
 
-        if (!query) {
-            await sock.sendMessage(from, { text: PERSONA_PREFIX + "Speak. I will not analyze your empty silence." }, { quoted: msg });
-            return;
-        }
-
-        if (command === 'gojo') {
-            await sock.sendMessage(from, { text: "Gojo Satoru is responding..." }, { quoted: msg });
-            try {
-                const prompt = `You are Gojo Satoru, the strongest modern sorcerer from JJK, arrogant, playful, incredibly confident, and lazy. Answer this query directly: ${query}`;
-                const reply = await getLuciferAIResponse(prompt, CONFIG.GROQ_API_KEY);
-                await sock.sendMessage(from, { text: `🔵 *[Gojo Satoru]* 🔵\n\n` + reply }, { quoted: msg });
-            } catch (e) {
-                await sock.sendMessage(from, { text: "Gojo ignored your request. He is currently eating mochi." }, { quoted: msg });
+            case 'gojo': {
+                if (!query) return;
+                await sock.sendMessage(from, { text: "Gojo Satoru is responding..." }, { quoted: msg });
+                try {
+                    const prompt = `You are Gojo Satoru from JJK, arrogant, playful, incredibly confident, and lazy. Answer this directly: ${query}`;
+                    const reply = await getLuciferAIResponse(prompt, CONFIG.GROQ_API_KEY);
+                    await sock.sendMessage(from, { text: `🔵 *[Gojo Satoru]* 🔵\n\n` + reply }, { quoted: msg });
+                } catch (e) {
+                    await sock.sendMessage(from, { text: "Gojo ignored your request." }, { quoted: msg });
+                }
+                break;
             }
-            return;
-        }
 
-        await sock.sendMessage(from, { text: "Listening to your request..." }, { quoted: msg });
-        const reply = await getLuciferAIResponse(query, CONFIG.GROQ_API_KEY);
-        if (reply) {
-            await sock.sendMessage(from, { text: PERSONA_PREFIX + reply }, { quoted: msg });
-        } else {
-            await sock.sendMessage(from, { text: PERSONA_PREFIX + "My cognitive servers rejected your prompt." }, { quoted: msg });
+            case 'imagine': {
+                if (!query) {
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Give me a description to draw, mortal." }, { quoted: msg });
+                    return;
+                }
+                await sock.sendMessage(from, { text: "Drawing your vision from the void..." }, { quoted: msg });
+                try {
+                    const imageUrl = `https://api.vreden.my.id/api/remini?url=${encodeURIComponent(query)}`; // Free upscale/image helper API
+                    await sock.sendMessage(from, { image: { url: imageUrl }, caption: "Drawn from your thoughts." }, { quoted: msg });
+                } catch (e) {
+                    await sock.sendMessage(from, { text: PERSONA_PREFIX + "Failed to render image streams." }, { quoted: msg });
+                }
+                break;
+            }
+
+            case 'read': {
+                await sock.sendMessage(from, { text: PERSONA_PREFIX + "Analyzing local text parameters..." }, { quoted: msg });
+                break;
+            }
+
+            case 'debug': {
+                if (!isOwner) return;
+                await sock.sendMessage(from, { text: PERSONA_PREFIX + "Starting system debug flow..." }, { quoted: msg });
+                break;
+            }
         }
     },
     getLuciferAIResponse
