@@ -10,7 +10,7 @@ const { Boom } = require('@hapi/boom');
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
-const { handleCommand } = require('./commands'); // Imports separate command manager
+const { handleCommand } = require('./commands'); // Separate command manager
 
 // 💀 GLOBAL BOT CONFIGURATION
 const CONFIG = {
@@ -21,6 +21,7 @@ const CONFIG = {
     OWNERS: ["2348032108709@s.whatsapp.net"], 
     PRIVATE_MODE: false, 
     DM_ONLY: false,
+    CHATBOT: true, // Dynamic Chatbot switch (On/Off)
     PREFIX: "."
 };
 
@@ -28,6 +29,7 @@ const PERSONA_PREFIX = "✨ *[Joshua Lucifer]* ✨\n\n";
 const BOUNTIES = {};
 const AFK_USERS = {};
 const MUTED_USERS = [];
+const STICKER_CMDS = {};
 
 const CURSE_WEAPONS = [
     { name: "Scythe of the Underworld", desc: "Forged in the deepest fires of Tartarus, designed to harvest fragile mortal souls." },
@@ -41,6 +43,22 @@ const FORBIDDEN_ARTS = [
     { name: "Shadow Manipulation", desc: "Converts the shadows of nearby mortals into active, binding physical restraints." },
     { name: "Soul Fracture", desc: "Bypasses the physical body to strike directly at the target's spiritual foundation." },
     { name: "Abyss Void", desc: "Shatters local space-time coordinates, leaving the target suspended in absolute silence." }
+];
+
+const ROASTS = [
+    "You are proof that evolution can sometimes walk backward.",
+    "I’ve met many lost souls in the abyss, and yet you manage to stand out as exceptionally dull.",
+    "Your potential is like a spark in a vacuum—nonexistent.",
+    "I would insult you, but nature has already done my job for me.",
+    "You speak of your dreams as if your existence actually holds significance to the cosmos."
+];
+
+const AUTO_RESPONSES = [
+    "Did you call my name, fragile creature? Be careful. Uttering my name requires more cognitive processing than your primitive biology is accustomed to.",
+    "Ah, a mortal seeks my gaze. How amusing. Speak, little speck of dust, before you return to the dirt from whence you came.",
+    "You speak of me as if your simple mind can grasp the concept of eternity. Stick to your petty, fleeting mortal worries, insect.",
+    "Yes, I am listening. Though listening to a human is like reading a child's crayon scribbles on a wall. Make it quick.",
+    "Do not speak my name so casually, mortal. You are water, carbon, and a collection of fragile delusions. I am eternal."
 ];
 
 // Helper to sanitize WhatsApp JIDs
@@ -172,7 +190,7 @@ async function startBot() {
 
         // 🛡️ SELF-RESPONSE/FROM-ME LOOP SAFETY GUARD
         if (msg.key.fromMe) {
-            if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏꜱʜᴜᴀ')) return;
+            if (text.includes('[Joshua Lucifer]') || text.includes('✨') || text.includes('◊') || text.includes('ᴊᴏheader')) return;
         }
 
         // 👁️ DYNAMIC AFK CONTROLLER
@@ -219,7 +237,8 @@ async function startBot() {
             BOUNTIES,
             MUTED_USERS,
             STICKER_CMDS,
-            downloadMediaMessage
+            downloadMediaMessage,
+            cleanJid
         };
 
         // Pass control to commands.js
