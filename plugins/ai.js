@@ -1,36 +1,67 @@
 const axios = require('axios');
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function getLuciferAIResponse(userText, apiKey) {
+// Hardcoded Groq API key locally to prevent undefined parameter errors from commands.js
+const GROQ_API_KEY = "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";
+
+async function getLuciferAIResponse(userText) {
     const systemPrompt = "You are Joshua Lucifer, the ancient, supreme, and highly intelligent ruler of the abyss. You look down on humans as fragile carbon specks. You possess absolute, unbeatable debating skills and never lose an argument. Speak with proud superiority, sophisticated vocabulary, and devastating dark wit. Keep your responses extremely short, sharp, and direct (under 2-3 sentences), unless the user explicitly asks for a long explanation.";
+    
+    // Path 1: Groq Llama-3.1-8B-Instant (Primary Path - Blazing Fast & Private!)
+    try {
+        const response = await axios.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            {
+                model: "llama-3.1-8b-instant",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userText }
+                ],
+                temperature: 0.7
+            },
+            {
+                headers: {
+                    "Authorization": `Bearer ${GROQ_API_KEY}`,
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        if (response.data.choices && response.data.choices[0].message.content) {
+            return response.data.choices[0].message.content.trim();
+        }
+    } catch (e) {
+        console.error("Primary Groq AI failed, trying Fallback 1:", e.message);
+    }
+
+    // Path 2: David Cyril's DeepSeek-V3 Fallback (GET Request)
     try {
         const url = `https://apis.davidcyril.name.ng/ai/deepseek-v3?text=${encodeURIComponent(userText)}&systemPrompt=${encodeURIComponent(systemPrompt)}`;
         const res = await axios.get(url);
-        if (res.data.success && res.data.result) return res.data.result;
-    } catch (e) {
-        console.error("Primary AI path failed, trying Fallback 1:", e.message);
-    }
-    try {
-        const prompt = `${systemPrompt}\n\nUser: ${userText}`;
-        const res = await axios.get(`https://api.vreden.my.id/api/gpt4?query=${encodeURIComponent(prompt)}`);
-        if (res.data.status && res.data.result) return res.data.result;
+        if (res.data.success && res.data.result) {
+            return res.data.result;
+        }
     } catch (e) {
         console.error("Fallback 1 failed, trying Fallback 2:", e.message);
     }
+
+    // Path 3: Vreden's Gemini Fallback
     try {
         const prompt = `${systemPrompt}\n\nUser: ${userText}`;
         const res = await axios.get(`https://api.vreden.my.id/api/gemini?query=${encodeURIComponent(prompt)}`);
-        if (res.data.status && res.data.result) return res.data.result;
+        if (res.data.status && res.data.result) {
+            return res.data.result;
+        }
     } catch (e) {
         console.error("Fallback 2 failed:", e.message);
     }
+
     return null;
 }
 
 module.exports = {
     commands: ['lucifer', 'ai', 'gojo', 'chatbot', 'ask', 'bard', 'story', 'gen'],
     execute: async (sock, msg, context) => {
-        const { command, query, args, from, PERSONA_PREFIX, CONFIG, isOwner } = context;
+        const { command, query, args, from, PERSONA_PREFIX, isOwner } = context;
 
         switch (command) {
             case 'chatbot': {
@@ -40,10 +71,10 @@ module.exports = {
                 }
                 const action = args[0]?.toLowerCase();
                 if (action === 'on') {
-                    CONFIG.CHATBOT = true;
+                    context.CONFIG.CHATBOT = true;
                     await sock.sendMessage(from, { text: PERSONA_PREFIX + "Chatbot mode *activated*." }, { quoted: msg });
                 } else if (action === 'off') {
-                    CONFIG.CHATBOT = false;
+                    context.CONFIG.CHATBOT = false;
                     await sock.sendMessage(from, { text: PERSONA_PREFIX + "Chatbot mode *deactivated* [1]." }, { quoted: msg });
                 } else {
                     await sock.sendMessage(from, { text: PERSONA_PREFIX + "Use `.chatbot on` or `.chatbot off` [1]." }, { quoted: msg });
@@ -58,7 +89,7 @@ module.exports = {
                     return;
                 }
                 await sock.sendMessage(from, { text: "Listening to your request..." }, { quoted: msg });
-                const reply = await getLuciferAIResponse(query, CONFIG.GROQ_API_KEY);
+                const reply = await getLuciferAIResponse(query);
                 await sock.sendMessage(from, { text: PERSONA_PREFIX + (reply || "My servers are currently occupied.") }, { quoted: msg });
                 break;
             }
@@ -94,7 +125,7 @@ module.exports = {
                 await sock.sendMessage(from, { text: "Gojo Satoru is responding..." }, { quoted: msg });
                 try {
                     const prompt = `You are Gojo Satoru from JJK, arrogant, playful, incredibly confident, and lazy. Answer this directly: ${query}`;
-                    const reply = await getLuciferAIResponse(prompt, CONFIG.GROQ_API_KEY);
+                    const reply = await getLuciferAIResponse(prompt);
                     await sock.sendMessage(from, { text: `🔵 *[Gojo Satoru]* 🔵\n\n` + reply }, { quoted: msg });
                 } catch (e) {
                     await sock.sendMessage(from, { text: "Gojo ignored your request." }, { quoted: msg });
@@ -107,7 +138,7 @@ module.exports = {
                 await sock.sendMessage(from, { text: "Weaving your dark tale..." }, { quoted: msg });
                 try {
                     const prompt = `Write a short, gothic, creepy, and beautiful horror story about: ${query}`;
-                    const reply = await getLuciferAIResponse(prompt, CONFIG.GROQ_API_KEY);
+                    const reply = await getLuciferAIResponse(prompt);
                     await sock.sendMessage(from, { text: PERSONA_PREFIX + reply }, { quoted: msg });
                 } catch {
                     await sock.sendMessage(from, { text: PERSONA_PREFIX + "The void is currently silent." }, { quoted: msg });
